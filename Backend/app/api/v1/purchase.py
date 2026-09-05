@@ -8,13 +8,13 @@ from sqlalchemy import or_
 
 from app.accounting.resolver import get_company_settings
 from app.core.deps import CurrentUser, DbSession, require_roles
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppError, NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
 from app.models import Document
 from app.models.enums import DocType, UserRole
 from app.schemas.common import Page
-from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate
-from app.services import document_service, master_service, pdf_service
+from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate, SendEmailRequest, SendEmailResponse
+from app.services import document_service, email_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["doc_number", "reference"]
 SORT_FIELDS = {"doc_number", "doc_date", "status"}
@@ -158,3 +158,30 @@ def get_vendor_bill_pdf(bill_id: int, db: DbSession):
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
     )
+
+
+@router.post("/bills/{bill_id}/send", response_model=SendEmailResponse, status_code=status.HTTP_202_ACCEPTED)
+def send_vendor_bill_email(bill_id: int, payload: SendEmailRequest, db: DbSession):
+    document = _get_document(db, bill_id, expected_type=DocType.VENDOR_BILL)
+    document_service.attach_balance(db, document)
+    to_email = payload.to_email or document.partner.email
+    if not to_email:
+        raise AppError(
+            f"{document.partner.name} has no email on file — add one or enter a recipient.",
+            code="NO_RECIPIENT_EMAIL",
+        )
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    email_service.send_document_email(
+        to_email=to_email,
+        subject=f"{company_name} — Bill {document.doc_number}",
+        html=(
+            f"<p>Dear {document.partner.name},</p>"
+            f"<p>Please find attached Bill <strong>{document.doc_number}</strong> "
+            f"for <strong>Rs. {document.total_amount:,.2f}</strong>, dated {document.doc_date.strftime('%d %b %Y')}.</p>"
+            f"<p>{company_name}</p>"
+        ),
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"{document.doc_number.replace('/', '-')}.pdf",
+    )
+    return SendEmailResponse(message=f"Bill sent to {to_email}.")

@@ -5,18 +5,20 @@ import { Controller, useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
-import { contactOptions } from '../../api/endpoints/contacts'
+import { contactOptions, getContact } from '../../api/endpoints/contacts'
 import {
   cancelVendorBill,
   createVendorBill,
   getVendorBill,
   postVendorBill,
+  sendVendorBillEmail,
   updateVendorBill,
 } from '../../api/endpoints/purchase'
 import { FormShell } from '../../components/shared/FormShell'
 import { emptyDocumentLine, LineItemGrid } from '../../components/shared/LineItemGrid'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { PayDialog } from '../../components/shared/PayDialog'
+import { SendEmailDialog } from '../../components/shared/SendEmailDialog'
 import { formatMoney } from '../../lib/money'
 import { openPdf } from '../../lib/pdf'
 import { useAuthStore } from '../../stores/authStore'
@@ -49,11 +51,19 @@ export function VendorBillFormPage() {
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPay, setShowPay] = useState(false)
+  const [showSend, setShowSend] = useState(false)
+  const [sentMessage, setSentMessage] = useState<string | null>(null)
 
   const { data: bill, isLoading } = useQuery({
     queryKey: ['vendor-bills', billId],
     queryFn: () => getVendorBill(billId as number),
     enabled: !isNew,
+  })
+
+  const { data: vendorContact } = useQuery({
+    queryKey: ['contacts', bill?.partner_id],
+    queryFn: () => getContact(bill!.partner_id),
+    enabled: Boolean(bill?.partner_id) && showSend,
   })
 
   const {
@@ -140,6 +150,9 @@ export function VendorBillFormPage() {
     actions.push({
       label: 'Print', onClick: () => openPdf(`/purchase/bills/${billId}/pdf`), variant: 'secondary' as const,
     })
+  }
+  if (!isNew && status === 'POSTED') {
+    actions.push({ label: 'Send', onClick: () => setShowSend(true), variant: 'secondary' as const })
   }
   if (!isNew && status === 'POSTED' && bill?.balance?.payment_status !== 'PAID') {
     actions.push({ label: 'Pay', onClick: () => setShowPay(true), variant: 'primary' as const })
@@ -231,6 +244,23 @@ export function VendorBillFormPage() {
         <div className="mt-4 rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger)]">
           {serverError}
         </div>
+      )}
+      {sentMessage && (
+        <div className="mt-4 rounded-md bg-[var(--color-success-bg)] px-3 py-2 text-sm text-[var(--color-success)]">
+          {sentMessage}
+        </div>
+      )}
+
+      {showSend && (
+        <SendEmailDialog
+          defaultEmail={vendorContact?.email ?? null}
+          sendFn={(email) => sendVendorBillEmail(billId as number, email)}
+          onClose={() => setShowSend(false)}
+          onSent={(message) => {
+            setShowSend(false)
+            setSentMessage(message)
+          }}
+        />
       )}
 
       {showPay && bill && (

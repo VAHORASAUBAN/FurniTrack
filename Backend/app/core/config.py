@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "app/static/uploads"
     MAX_UPLOAD_SIZE_MB: int = 2
 
+    # --- Email (Resend) --- empty API key disables sending: /send endpoints
+    # 409 with a clear code rather than crashing on every unrelated request.
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]

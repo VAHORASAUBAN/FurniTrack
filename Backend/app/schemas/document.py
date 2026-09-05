@@ -11,7 +11,7 @@ document_service, never trusted from the request.
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import DocStatus, DocType, PaymentAllocationStatus
 from app.schemas.common import Money, Qty
@@ -91,3 +91,14 @@ class DocumentOut(BaseModel):
     updated_at: datetime
     lines: list[DocumentLineOut]
     balance: DocumentBalance | None = None
+
+
+class SendEmailRequest(BaseModel):
+    """design doc §5.5 — the Bill/Invoice "Send" action. Defaults to the
+    partner's own email on file when to_email is omitted."""
+
+    to_email: EmailStr | None = None
+
+
+class SendEmailResponse(BaseModel):
+    message: str

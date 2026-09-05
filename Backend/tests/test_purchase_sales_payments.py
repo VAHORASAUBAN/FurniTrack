@@ -8,6 +8,7 @@ for the first time — confirm, convert, post, pay, cancel, all via the API.
 import uuid
 
 import pytest
+import resend
 
 
 def _account_id(client, admin_auth_header, search: str) -> int:
@@ -389,3 +390,90 @@ def test_payment_list_filters_by_type_and_shows_partner_and_document_names(
     assert detail["partner_name"]
     assert detail["allocations"][0]["doc_number"] == invoice["doc_number"]
     assert detail["allocations"][0]["doc_type"] == "CUSTOMER_INVOICE"
+
+
+def test_send_vendor_bill_email_defaults_to_partner_email_on_file(client, admin_auth_header, vendor_id, monkeypatch):
+    """Mocks the actual Resend call - this proves the endpoint's plumbing
+    (auth, lookup, PDF generation, request shape) without sending a real
+    email on every test run. The live send is proven once, separately,
+    against the real API."""
+    captured = {}
+
+    def fake_send(params):
+        captured.update(params)
+        return {"id": "fake-message-id"}
+
+    monkeypatch.setattr(resend.Emails, "send", fake_send)
+
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+
+    contact = client.get(f"/api/v1/contacts/{vendor_id}", headers=admin_auth_header).json()
+
+    resp = client.post(f"/api/v1/purchase/bills/{bill['id']}/send", json={}, headers=admin_auth_header)
+    assert resp.status_code == 202, resp.text
+    assert contact["email"] in resp.json()["message"]
+
+    assert captured["to"] == contact["email"]
+    assert bill["doc_number"] in captured["subject"]
+    assert captured["attachments"][0]["filename"] == bill["doc_number"].replace("/", "-") + ".pdf"
+    assert bytes(captured["attachments"][0]["content"])[:4] == b"%PDF"
+
+
+def test_send_customer_invoice_email_accepts_an_explicit_recipient(
+    client, admin_auth_header, customer_id, monkeypatch
+):
+    captured = {}
+    monkeypatch.setattr(resend.Emails, "send", lambda params: captured.update(params) or {"id": "fake-id"})
+
+    income_id = _account_id(client, admin_auth_header, "Sales")
+    invoice = client.post(
+        "/api/v1/sales/invoices",
+        json={
+            "partner_id": customer_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": income_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/sales/invoices/{invoice['id']}/post", headers=admin_auth_header)
+
+    resp = client.post(
+        f"/api/v1/sales/invoices/{invoice['id']}/send",
+        json={"to_email": "override@example.com"},
+        headers=admin_auth_header,
+    )
+    assert resp.status_code == 202, resp.text
+    assert captured["to"] == "override@example.com"
+
+
+def test_send_email_without_a_recipient_or_partner_email_is_rejected(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    # A contact created with no email at all - ContactCreate.email is optional.
+    contact = client.post(
+        "/api/v1/contacts", json={"name": f"No Email Vendor {suffix}", "contact_type": "VENDOR"},
+        headers=admin_auth_header,
+    ).json()["contact"]
+    assert contact["email"] is None
+
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": contact["id"], "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+
+    resp = client.post(f"/api/v1/purchase/bills/{bill['id']}/send", json={}, headers=admin_auth_header)
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "NO_RECIPIENT_EMAIL"

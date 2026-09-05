@@ -66,3 +66,8 @@ export async function cancelCustomerInvoice(id: number): Promise<Document> {
   const resp = await apiClient.post<Document>(`/sales/invoices/${id}/cancel`)
   return resp.data
 }
+
+export async function sendCustomerInvoiceEmail(id: number, toEmail?: string): Promise<{ message: string }> {
+  const resp = await apiClient.post<{ message: string }>(`/sales/invoices/${id}/send`, { to_email: toEmail })
+  return resp.data
+}

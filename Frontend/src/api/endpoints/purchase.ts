@@ -66,3 +66,8 @@ export async function cancelVendorBill(id: number): Promise<Document> {
   const resp = await apiClient.post<Document>(`/purchase/bills/${id}/cancel`)
   return resp.data
 }
+
+export async function sendVendorBillEmail(id: number, toEmail?: string): Promise<{ message: string }> {
+  const resp = await apiClient.post<{ message: string }>(`/purchase/bills/${id}/send`, { to_email: toEmail })
+  return resp.data
+}

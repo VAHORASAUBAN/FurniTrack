@@ -5,18 +5,20 @@ import { Controller, useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
-import { contactOptions } from '../../api/endpoints/contacts'
+import { contactOptions, getContact } from '../../api/endpoints/contacts'
 import {
   cancelCustomerInvoice,
   createCustomerInvoice,
   getCustomerInvoice,
   postCustomerInvoice,
+  sendCustomerInvoiceEmail,
   updateCustomerInvoice,
 } from '../../api/endpoints/sales'
 import { FormShell } from '../../components/shared/FormShell'
 import { emptyDocumentLine, LineItemGrid } from '../../components/shared/LineItemGrid'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { PayDialog } from '../../components/shared/PayDialog'
+import { SendEmailDialog } from '../../components/shared/SendEmailDialog'
 import { formatMoney } from '../../lib/money'
 import { openPdf } from '../../lib/pdf'
 import { useAuthStore } from '../../stores/authStore'
@@ -49,11 +51,19 @@ export function CustomerInvoiceFormPage() {
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPay, setShowPay] = useState(false)
+  const [showSend, setShowSend] = useState(false)
+  const [sentMessage, setSentMessage] = useState<string | null>(null)
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['customer-invoices', invoiceId],
     queryFn: () => getCustomerInvoice(invoiceId as number),
     enabled: !isNew,
+  })
+
+  const { data: customerContact } = useQuery({
+    queryKey: ['contacts', invoice?.partner_id],
+    queryFn: () => getContact(invoice!.partner_id),
+    enabled: Boolean(invoice?.partner_id) && showSend,
   })
 
   const {
@@ -141,6 +151,9 @@ export function CustomerInvoiceFormPage() {
     actions.push({
       label: 'Print', onClick: () => openPdf(`/sales/invoices/${invoiceId}/pdf`), variant: 'secondary' as const,
     })
+  }
+  if (!isNew && status === 'POSTED') {
+    actions.push({ label: 'Send', onClick: () => setShowSend(true), variant: 'secondary' as const })
   }
   if (!isNew && status === 'POSTED' && invoice?.balance?.payment_status !== 'PAID') {
     actions.push({ label: 'Receive', onClick: () => setShowPay(true), variant: 'primary' as const })
@@ -232,6 +245,23 @@ export function CustomerInvoiceFormPage() {
         <div className="mt-4 rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger)]">
           {serverError}
         </div>
+      )}
+      {sentMessage && (
+        <div className="mt-4 rounded-md bg-[var(--color-success-bg)] px-3 py-2 text-sm text-[var(--color-success)]">
+          {sentMessage}
+        </div>
+      )}
+
+      {showSend && (
+        <SendEmailDialog
+          defaultEmail={customerContact?.email ?? null}
+          sendFn={(email) => sendCustomerInvoiceEmail(invoiceId as number, email)}
+          onClose={() => setShowSend(false)}
+          onSent={(message) => {
+            setShowSend(false)
+            setSentMessage(message)
+          }}
+        />
       )}
 
       {showPay && invoice && (
