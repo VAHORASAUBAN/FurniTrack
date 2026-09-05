@@ -76,6 +76,21 @@ const SETTINGS_GROUP: NavGroup = {
   items: [{ to: '/settings/users', label: 'Users', icon: UserCog }],
 }
 
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] font-medium transition-colors ${
+    isActive
+      ? 'bg-white/[0.07] text-[var(--color-sidebar-ink)]'
+      : 'text-[var(--color-sidebar-ink-2)] hover:bg-white/[0.04] hover:text-[var(--color-sidebar-ink)]'
+  }`
+
+function NavIcon({ Icon, active }: { Icon: React.ComponentType<{ size?: number }>; active: boolean }) {
+  return (
+    <span className={active ? 'text-[var(--color-brass)]' : 'text-[var(--color-sidebar-ink-2)] group-hover:text-[var(--color-brass)]'}>
+      <Icon size={16} />
+    </span>
+  )
+}
+
 export function Sidebar() {
   const role = useAuthStore((s) => s.user?.role)
   if (role === 'PORTAL') return null // portal users get their own minimal shell
@@ -83,39 +98,47 @@ export function Sidebar() {
   const groups = role === 'ADMIN' ? [...GROUPS, SETTINGS_GROUP] : GROUPS
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col gap-6 border-r border-[var(--color-rule)] bg-[var(--color-surface)] px-4 py-5 overflow-y-auto">
-      <div className="px-2 text-[15px] font-semibold tracking-tight text-[var(--color-ink)]">
-        Urban Furniture
+    <aside className="flex w-64 shrink-0 flex-col gap-5 overflow-y-auto bg-[var(--color-sidebar)] px-3.5 py-5">
+      <div className="flex items-center gap-2.5 px-1.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-brass)] to-[var(--color-accent)] text-[13px] font-bold text-white font-display shadow-[var(--shadow-sm)]">
+          UF
+        </div>
+        <div className="flex flex-col leading-none">
+          <span className="font-display text-[15px] font-semibold tracking-tight text-[var(--color-sidebar-ink)]">
+            Urban Furniture
+          </span>
+          <span className="mt-0.5 text-[10.5px] uppercase tracking-wider text-[var(--color-sidebar-ink-2)]">
+            Ledger &amp; Accounts
+          </span>
+        </div>
       </div>
 
-      <NavLink
-        to="/"
-        end
-        className={({ isActive }) =>
-          `flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium ${
-            isActive ? 'bg-[var(--color-accent-bg)] text-[var(--color-accent)]' : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper)]'
-          }`
-        }
-      >
-        <LayoutDashboard size={17} /> Dashboard
+      <NavLink to="/" end className={navClass}>
+        {({ isActive }) => (
+          <>
+            <NavIcon Icon={LayoutDashboard} active={isActive} />
+            Dashboard
+            {isActive && <span className="absolute -left-3.5 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-[var(--color-brass)]" />}
+          </>
+        )}
       </NavLink>
 
       {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5">
-          <div className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">
+          <div className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-sidebar-ink-2)]/80">
             {group.label}
           </div>
           {group.items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium ${
-                  isActive ? 'bg-[var(--color-accent-bg)] text-[var(--color-accent)]' : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper)]'
-                }`
-              }
-            >
-              <item.icon size={17} /> {item.label}
+            <NavLink key={item.to} to={item.to} className={navClass}>
+              {({ isActive }) => (
+                <>
+                  <NavIcon Icon={item.icon} active={isActive} />
+                  {item.label}
+                  {isActive && (
+                    <span className="absolute -left-3.5 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-[var(--color-brass)]" />
+                  )}
+                </>
+              )}
             </NavLink>
           ))}
         </div>
