@@ -9,6 +9,7 @@ from app.api.v1 import (
     auth,
     budgets,
     contacts,
+    dashboard,
     journal_entries,
     journals,
     payments,
@@ -36,6 +37,4 @@ api_router.include_router(payments.router)
 api_router.include_router(portal.router)
 api_router.include_router(budgets.router)
 api_router.include_router(reports.router)
-
-# Populated incrementally as each module is built:
-# from app.api.v1 import dashboard
+api_router.include_router(dashboard.router)

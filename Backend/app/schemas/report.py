@@ -46,6 +46,46 @@ class ProfitLossOut(BaseModel):
     net_profit: Money
 
 
+class DocTypeCounts(BaseModel):
+    draft: int
+    confirmed: int
+    cancelled: int
+
+
+class PostedDocSummary(BaseModel):
+    draft_count: int
+    posted_count: int
+    unpaid_count: int
+    partially_paid_count: int
+    paid_count: int
+    total_amount_due: Money
+
+
+class DashboardBudgetSummary(BaseModel):
+    active_count: int
+    total_planned: Money
+    total_achieved: Money
+
+
+class RecentDocumentOut(BaseModel):
+    id: int
+    doc_type: DocType
+    doc_number: str
+    doc_date: date
+    status: str
+    partner_name: str
+    total_amount: Money
+
+
+class DashboardSummaryOut(BaseModel):
+    sales_orders: DocTypeCounts
+    purchase_orders: DocTypeCounts
+    customer_invoices: PostedDocSummary
+    vendor_bills: PostedDocSummary
+    budgets: DashboardBudgetSummary
+    recent_documents: list[RecentDocumentOut]
+
+
 class BudgetDrillDownItem(BaseModel):
     """One posted document behind a budget line's Achieved figure — design
     doc §4.3/§8.4: clicking Achieved opens the list of source documents."""

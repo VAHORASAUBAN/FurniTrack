@@ -219,3 +219,45 @@ def test_budget_revise_creates_a_linked_draft_and_supersedes_the_original(client
     )
     assert edit_resp.status_code == 200
     assert edit_resp.json()["lines"][0]["planned_amount"] == "1500.00"
+
+
+def test_dashboard_summary_reflects_a_freshly_confirmed_order_and_posted_bill(client, admin_auth_header):
+    before = client.get("/api/v1/dashboard/summary", headers=admin_auth_header).json()
+
+    suffix = uuid.uuid4().hex[:8]
+    vendor = client.post(
+        "/api/v1/contacts",
+        json={"name": f"Dashboard Vendor {suffix}", "contact_type": "VENDOR", "email": f"{suffix}@t.co"},
+        headers=admin_auth_header,
+    ).json()["contact"]
+
+    po = client.post(
+        "/api/v1/purchase/orders",
+        json={
+            "partner_id": vendor["id"], "doc_date": "2026-04-01",
+            "lines": [{"account_id": _account_id(client, admin_auth_header, "Purchase"), "quantity": "1", "unit_price": "100.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/orders/{po['id']}/confirm", headers=admin_auth_header)
+
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor["id"], "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "300.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+
+    after = client.get("/api/v1/dashboard/summary", headers=admin_auth_header).json()
+
+    assert after["purchase_orders"]["confirmed"] == before["purchase_orders"]["confirmed"] + 1
+    assert after["vendor_bills"]["posted_count"] == before["vendor_bills"]["posted_count"] + 1
+    assert after["vendor_bills"]["unpaid_count"] == before["vendor_bills"]["unpaid_count"] + 1
+    assert Decimal(after["vendor_bills"]["total_amount_due"]) - Decimal(
+        before["vendor_bills"]["total_amount_due"]
+    ) == Decimal("300.00")
+    assert after["recent_documents"][0]["doc_number"] == bill["doc_number"]

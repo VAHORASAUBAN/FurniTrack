@@ -2,22 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Inbox, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getBudgetDrillDown } from '../../api/endpoints/reports'
+import { documentPath, DOC_TYPE_LABEL } from '../../lib/documentRoutes'
 import { formatMoney } from '../../lib/money'
-import type { DrillDownDocType } from '../../types/report'
-
-const DOC_TYPE_LABEL: Record<DrillDownDocType, string> = {
-  PURCHASE_ORDER: 'Purchase Order',
-  VENDOR_BILL: 'Vendor Bill',
-  SALES_ORDER: 'Sales Order',
-  CUSTOMER_INVOICE: 'Customer Invoice',
-}
-
-const DOC_TYPE_ROUTE: Record<DrillDownDocType, string> = {
-  PURCHASE_ORDER: '/purchase/orders',
-  VENDOR_BILL: '/purchase/bills',
-  SALES_ORDER: '/sales/orders',
-  CUSTOMER_INVOICE: '/sales/invoices',
-}
 
 interface BudgetDrillDownModalProps {
   analyticId: number
@@ -104,7 +90,7 @@ export function BudgetDrillDownModal({
                     key={`${item.doc_type}-${item.id}`}
                     onClick={() => {
                       onClose()
-                      navigate(`${DOC_TYPE_ROUTE[item.doc_type]}/${item.id}`)
+                      navigate(documentPath(item.doc_type, item.id))
                     }}
                     className="cursor-pointer border-b border-[var(--color-rule)] last:border-0 hover:bg-[var(--color-accent-bg)]/50"
                   >

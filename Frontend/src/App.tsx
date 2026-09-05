@@ -11,6 +11,7 @@ import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignUpPage } from './features/auth/SignUpPage'
 import { BudgetFormPage } from './features/budgets/BudgetFormPage'
 import { BudgetListPage } from './features/budgets/BudgetListPage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
 import { PortalInvoiceDetailPage } from './features/portal/PortalInvoiceDetailPage'
 import { PortalInvoiceListPage } from './features/portal/PortalInvoiceListPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
@@ -55,7 +56,7 @@ function App() {
 
         <Route element={<RequireRole allow={[...STAFF]} />}>
           <Route element={<AppShell />}>
-            <Route path="/" element={<ComingSoon title="Dashboard" />} />
+            <Route path="/" element={<DashboardPage />} />
 
             <Route path="/contacts" element={<ContactListPage />} />
             <Route path="/contacts/:id" element={<ContactFormPage />} />
