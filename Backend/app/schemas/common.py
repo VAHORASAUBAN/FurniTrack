@@ -23,6 +23,16 @@ def _format_money(v: Decimal) -> str:
 
 Money = Annotated[Decimal, PlainSerializer(_format_money, return_type=str, when_used="json")]
 
+
+def _format_qty(v: Decimal) -> str:
+    # Quantities store 3 decimals (DECIMAL(12,3), design doc §2.2's Qty type)
+    # for part-units — a separate formatter from Money's 2 decimals so a
+    # quantity like 3.500 doesn't silently truncate to 3.50 on the wire.
+    return f"{v:.3f}"
+
+
+Qty = Annotated[Decimal, PlainSerializer(_format_qty, return_type=str, when_used="json")]
+
 ItemT = TypeVar("ItemT")
 
 

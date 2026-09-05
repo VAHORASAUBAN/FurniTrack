@@ -47,3 +47,8 @@ export async function productCategoryOptions(search: string): Promise<Many2OneOp
   const categories = await listProductCategories(search)
   return categories.map((c) => ({ id: c.id, label: c.name }))
 }
+
+export async function productOptions(search: string): Promise<Many2OneOption[]> {
+  const page = await listProducts({ search, page_size: 25 })
+  return page.items.map((p) => ({ id: p.id, label: p.name }))
+}

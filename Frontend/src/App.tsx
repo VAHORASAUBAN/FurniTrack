@@ -14,6 +14,14 @@ import { JournalFormPage } from './features/journals/JournalFormPage'
 import { JournalListPage } from './features/journals/JournalListPage'
 import { ProductFormPage } from './features/products/ProductFormPage'
 import { ProductListPage } from './features/products/ProductListPage'
+import { PurchaseOrderFormPage } from './features/purchase/PurchaseOrderFormPage'
+import { PurchaseOrderListPage } from './features/purchase/PurchaseOrderListPage'
+import { VendorBillFormPage } from './features/purchase/VendorBillFormPage'
+import { VendorBillListPage } from './features/purchase/VendorBillListPage'
+import { CustomerInvoiceFormPage } from './features/sales/CustomerInvoiceFormPage'
+import { CustomerInvoiceListPage } from './features/sales/CustomerInvoiceListPage'
+import { SalesOrderFormPage } from './features/sales/SalesOrderFormPage'
+import { SalesOrderListPage } from './features/sales/SalesOrderListPage'
 import { useSessionBootstrap } from './hooks/useSessionBootstrap'
 import { RequireRole } from './router/RequireRole'
 
@@ -55,12 +63,16 @@ function App() {
 
             <Route path="/budgets" element={<ComingSoon title="Budgets" />} />
 
-            <Route path="/purchase/orders" element={<ComingSoon title="Purchase Orders" />} />
-            <Route path="/purchase/bills" element={<ComingSoon title="Vendor Bills" />} />
+            <Route path="/purchase/orders" element={<PurchaseOrderListPage />} />
+            <Route path="/purchase/orders/:id" element={<PurchaseOrderFormPage />} />
+            <Route path="/purchase/bills" element={<VendorBillListPage />} />
+            <Route path="/purchase/bills/:id" element={<VendorBillFormPage />} />
             <Route path="/purchase/payments" element={<ComingSoon title="Payments" />} />
 
-            <Route path="/sales/orders" element={<ComingSoon title="Sales Orders" />} />
-            <Route path="/sales/invoices" element={<ComingSoon title="Customer Invoices" />} />
+            <Route path="/sales/orders" element={<SalesOrderListPage />} />
+            <Route path="/sales/orders/:id" element={<SalesOrderFormPage />} />
+            <Route path="/sales/invoices" element={<CustomerInvoiceListPage />} />
+            <Route path="/sales/invoices/:id" element={<CustomerInvoiceFormPage />} />
             <Route path="/sales/receipts" element={<ComingSoon title="Receipts" />} />
 
             <Route path="/reports/balance-sheet" element={<ComingSoon title="Balance Sheet" />} />
