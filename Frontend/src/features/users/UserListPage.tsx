@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { listUsers } from '../../api/endpoints/users'
 import { ListView } from '../../components/shared/ListView'
 import { StatusPill } from '../../components/shared/StatusPill'
-import { USER_ROLE_LABELS, type AppUser } from '../../types/user'
+import { USER_ROLE_LABELS, type AppUser, type UserRoleValue } from '../../types/user'
 
 export function UserListPage() {
   const navigate = useNavigate()
@@ -11,10 +11,14 @@ export function UserListPage() {
     <ListView<AppUser>
       title="Users"
       queryKey="users"
-      fetcher={listUsers}
+      fetcher={(params) => listUsers({ ...params, role: params.status as UserRoleValue | undefined })}
       rowKey={(u) => u.id}
       onNew={() => navigate('/settings/users/new')}
       onRowClick={(u) => navigate(`/settings/users/${u.id}`)}
+      statusFilter={{
+        label: 'Role',
+        options: Object.entries(USER_ROLE_LABELS).map(([value, label]) => ({ value, label })),
+      }}
       searchPlaceholder="Search by name, login ID, or email…"
       columns={[
         {

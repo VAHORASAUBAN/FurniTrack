@@ -261,3 +261,36 @@ def test_dashboard_summary_reflects_a_freshly_confirmed_order_and_posted_bill(cl
         before["vendor_bills"]["total_amount_due"]
     ) == Decimal("300.00")
     assert after["recent_documents"][0]["doc_number"] == bill["doc_number"]
+
+
+def test_budget_list_filters_by_status(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    analytic = client.post(
+        "/api/v1/analytic-accounts", json={"name": f"Filter {suffix}", "analytic_type": "EXPENSE"},
+        headers=admin_auth_header,
+    ).json()
+    budget = client.post(
+        "/api/v1/budgets",
+        json={
+            "name": f"Filter Budget {suffix}", "start_date": "2025-07-01", "end_date": "2025-07-31",
+            "lines": [{"analytic_account_id": analytic["id"], "analytic_type": "EXPENSE", "planned_amount": "100.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    draft_only = client.get(
+        "/api/v1/budgets", params={"search": suffix, "status": "DRAFT"}, headers=admin_auth_header
+    ).json()
+    assert draft_only["total"] == 1
+
+    client.post(f"/api/v1/budgets/{budget['id']}/confirm", headers=admin_auth_header)
+
+    draft_after_confirm = client.get(
+        "/api/v1/budgets", params={"search": suffix, "status": "DRAFT"}, headers=admin_auth_header
+    ).json()
+    assert draft_after_confirm["total"] == 0
+
+    confirmed_only = client.get(
+        "/api/v1/budgets", params={"search": suffix, "status": "CONFIRMED"}, headers=admin_auth_header
+    ).json()
+    assert confirmed_only["total"] == 1

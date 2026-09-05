@@ -1,5 +1,7 @@
 """Payment router — design doc §5.6. Creating a payment posts it
 immediately (no draft stage) — see payment_service's module docstring."""
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import text
 
@@ -7,7 +9,7 @@ from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.exceptions import NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
 from app.models import Payment
-from app.models.enums import PaymentType, UserRole
+from app.models.enums import PaymentStatus, PaymentType, UserRole
 from app.schemas.common import Page
 from app.schemas.payment import DocumentOutstandingOut, PaymentCreate, PaymentOut
 from app.services import master_service, payment_service
@@ -23,10 +25,23 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[PaymentOut])
-def list_payments(db: DbSession, params: PageParams = Depends(page_params), payment_type: PaymentType | None = Query(default=None)):
+def list_payments(
+    db: DbSession,
+    params: PageParams = Depends(page_params),
+    payment_type: PaymentType | None = Query(default=None),
+    status: PaymentStatus | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+):
     query = db.query(Payment)
     if payment_type is not None:
         query = query.filter(Payment.payment_type == payment_type)
+    if status is not None:
+        query = query.filter(Payment.status == status)
+    if date_from is not None:
+        query = query.filter(Payment.payment_date >= date_from)
+    if date_to is not None:
+        query = query.filter(Payment.payment_date <= date_to)
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(Payment.payment_number.ilike(like))

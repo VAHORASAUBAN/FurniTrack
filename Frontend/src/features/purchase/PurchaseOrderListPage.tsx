@@ -18,6 +18,14 @@ export function PurchaseOrderListPage() {
       onRowClick={(d) => navigate(`/purchase/orders/${d.id}`)}
       supportsArchive={false}
       searchPlaceholder="Search by PO number or reference…"
+      statusFilter={{
+        options: [
+          { value: 'DRAFT', label: 'Draft' },
+          { value: 'CONFIRMED', label: 'Confirmed' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Order Date' }}
       columns={[
         {
           header: 'PO No.', sortKey: 'doc_number', csvValue: (d) => d.doc_number,

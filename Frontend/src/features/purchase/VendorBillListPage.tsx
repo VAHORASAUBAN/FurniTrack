@@ -18,6 +18,14 @@ export function VendorBillListPage() {
       onRowClick={(d) => navigate(`/purchase/bills/${d.id}`)}
       supportsArchive={false}
       searchPlaceholder="Search by bill number or reference…"
+      statusFilter={{
+        options: [
+          { value: 'DRAFT', label: 'Draft' },
+          { value: 'POSTED', label: 'Posted' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Bill Date' }}
       columns={[
         {
           header: 'Bill No.', sortKey: 'doc_number', csvValue: (d) => d.doc_number,

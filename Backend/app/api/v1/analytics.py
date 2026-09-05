@@ -1,10 +1,10 @@
 """Analytic Account router — design doc §5.3, §9.1."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.deps import DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import AnalyticAccount
-from app.models.enums import UserRole
+from app.models.enums import AnalyticType, UserRole
 from app.schemas.analytic_account import AnalyticAccountCreate, AnalyticAccountOut, AnalyticAccountUpdate
 from app.schemas.common import Page
 from app.services import master_service
@@ -20,9 +20,12 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[AnalyticAccountOut])
-def list_analytic_accounts(db: DbSession, params: PageParams = Depends(page_params)):
+def list_analytic_accounts(
+    db: DbSession, params: PageParams = Depends(page_params), analytic_type: AnalyticType | None = Query(default=None)
+):
     items, total = master_service.list_records(
-        db, AnalyticAccount, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="name"
+        db, AnalyticAccount, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="name",
+        exact_filters={"analytic_type": analytic_type},
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))

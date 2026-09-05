@@ -116,3 +116,70 @@ def test_archived_account_excluded_from_default_list_but_visible_with_flag(clien
     ).json()
     assert with_archived["total"] == 1
     assert with_archived["items"][0]["is_active"] is False
+
+
+def test_account_list_filters_by_account_type(client, admin_auth_header):
+    code = uuid.uuid4().hex[:6]
+    client.post(
+        "/api/v1/accounts",
+        json={"code": f"E{code}", "name": f"Expense {code}", "account_type": "EXPENSE"},
+        headers=admin_auth_header,
+    )
+    client.post(
+        "/api/v1/accounts",
+        json={"code": f"I{code}", "name": f"Income {code}", "account_type": "INCOME"},
+        headers=admin_auth_header,
+    )
+
+    expense_only = client.get(
+        "/api/v1/accounts", params={"search": code, "account_type": "EXPENSE"}, headers=admin_auth_header
+    ).json()
+    assert expense_only["total"] == 1
+    assert expense_only["items"][0]["account_type"] == "EXPENSE"
+
+    both = client.get("/api/v1/accounts", params={"search": code}, headers=admin_auth_header).json()
+    assert both["total"] == 2
+
+
+def test_journal_list_filters_by_journal_type(client, admin_auth_header):
+    code = uuid.uuid4().hex[:6]
+    account_id = client.get("/api/v1/accounts?search=Bank", headers=admin_auth_header).json()["items"][0]["id"]
+    client.post(
+        "/api/v1/journals",
+        json={"code": f"MISC{code}", "name": f"Misc {code}", "journal_type": "MISC", "default_account_id": account_id},
+        headers=admin_auth_header,
+    )
+
+    resp = client.get(
+        "/api/v1/journals", params={"search": code, "journal_type": "MISC"}, headers=admin_auth_header
+    ).json()
+    assert resp["total"] == 1
+    assert resp["items"][0]["journal_type"] == "MISC"
+
+    wrong_type = client.get(
+        "/api/v1/journals", params={"search": code, "journal_type": "BANK"}, headers=admin_auth_header
+    ).json()
+    assert wrong_type["total"] == 0
+
+
+def test_user_list_filters_by_role(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:6]
+    login_id = f"t{suffix}"
+    client.post(
+        "/api/v1/users",
+        json={
+            "name": f"Filter Test {suffix}", "login_id": login_id, "email": f"{suffix}@t.co",
+            "password": "Passw0rd1", "password_confirm": "Passw0rd1", "role": "ACCOUNTANT", "contact_id": None,
+        },
+        headers=admin_auth_header,
+    )
+
+    accountants = client.get(
+        "/api/v1/users", params={"search": login_id, "role": "ACCOUNTANT"}, headers=admin_auth_header
+    ).json()
+    assert accountants["total"] == 1
+
+    admins_only = client.get(
+        "/api/v1/users", params={"search": login_id, "role": "ADMIN"}, headers=admin_auth_header
+    ).json()
+    assert admins_only["total"] == 0

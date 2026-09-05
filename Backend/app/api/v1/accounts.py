@@ -1,10 +1,10 @@
 """Chart of Accounts router — design doc §5.3, §9.1."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.deps import DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import ChartOfAccount
-from app.models.enums import UserRole
+from app.models.enums import AccountType, UserRole
 from app.schemas.account import AccountCreate, AccountOut, AccountUpdate
 from app.schemas.common import Page
 from app.services import account_service, master_service
@@ -17,12 +17,15 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[AccountOut])
-def list_accounts(db: DbSession, params: PageParams = Depends(page_params)):
+def list_accounts(
+    db: DbSession, params: PageParams = Depends(page_params), account_type: AccountType | None = Query(default=None)
+):
     items, total = master_service.list_records(
         db, ChartOfAccount, params,
         search_fields=account_service.SEARCH_FIELDS,
         sort_fields=account_service.SORT_FIELDS,
         default_sort="code",
+        exact_filters={"account_type": account_type},
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))

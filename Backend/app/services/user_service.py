@@ -9,18 +9,21 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.pagination import PageParams, apply_sort, paginate
 from app.core.security import hash_password
 from app.models import Contact, User
+from app.models.enums import UserRole
 
 SEARCH_FIELDS = ["name", "login_id", "email"]
 SORT_FIELDS = {"name", "login_id", "role"}
 
 
-def list_users(db: Session, params: PageParams) -> tuple[list[User], int]:
+def list_users(db: Session, params: PageParams, *, role: UserRole | None = None) -> tuple[list[User], int]:
     query = db.query(User)
     if not params.include_archived:
         query = query.filter(User.is_active.is_(True))
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(or_(*(getattr(User, f).ilike(like) for f in SEARCH_FIELDS)))
+    if role is not None:
+        query = query.filter(User.role == role)
     query = apply_sort(query, params.sort, User, SORT_FIELDS, "name")
     return paginate(query, params)
 

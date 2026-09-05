@@ -477,3 +477,139 @@ def test_send_email_without_a_recipient_or_partner_email_is_rejected(client, adm
     resp = client.post(f"/api/v1/purchase/bills/{bill['id']}/send", json={}, headers=admin_auth_header)
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "NO_RECIPIENT_EMAIL"
+
+
+def test_purchase_order_list_filters_by_status_and_date_range(client, admin_auth_header, vendor_id):
+    po = client.post(
+        "/api/v1/purchase/orders",
+        json={
+            "partner_id": vendor_id, "doc_date": "2025-01-15",
+            "lines": [{"account_id": _account_id(client, admin_auth_header, "Purchase"), "quantity": "1", "unit_price": "10.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    draft_only = client.get(
+        "/api/v1/purchase/orders", params={"search": po["doc_number"], "status": "DRAFT"}, headers=admin_auth_header
+    ).json()
+    assert draft_only["total"] == 1
+
+    confirmed_only = client.get(
+        "/api/v1/purchase/orders", params={"search": po["doc_number"], "status": "CONFIRMED"}, headers=admin_auth_header
+    ).json()
+    assert confirmed_only["total"] == 0
+
+    in_range = client.get(
+        "/api/v1/purchase/orders",
+        params={"search": po["doc_number"], "date_from": "2025-01-01", "date_to": "2025-01-31"},
+        headers=admin_auth_header,
+    ).json()
+    assert in_range["total"] == 1
+
+    out_of_range = client.get(
+        "/api/v1/purchase/orders",
+        params={"search": po["doc_number"], "date_from": "2025-02-01", "date_to": "2025-02-28"},
+        headers=admin_auth_header,
+    ).json()
+    assert out_of_range["total"] == 0
+
+
+def test_journal_entry_list_filters_by_status_and_date_range(client, admin_auth_header):
+    cash_id = _account_id(client, admin_auth_header, "Cash")
+    bank_id = _account_id(client, admin_auth_header, "Bank")
+    journal_id = _journal_id(client, admin_auth_header, "Cash")
+    suffix = uuid.uuid4().hex[:8]
+
+    entry = client.post(
+        "/api/v1/journal-entries",
+        json={
+            "journal_id": journal_id, "entry_date": "2025-03-10", "reference": f"FILTER-{suffix}",
+            "lines": [
+                {"account_id": cash_id, "debit": "50.00", "credit": "0"},
+                {"account_id": bank_id, "debit": "0", "credit": "50.00"},
+            ],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    draft_only = client.get(
+        "/api/v1/journal-entries", params={"search": f"FILTER-{suffix}", "status": "DRAFT"}, headers=admin_auth_header
+    ).json()
+    assert draft_only["total"] == 1
+
+    client.post(f"/api/v1/journal-entries/{entry['id']}/post", headers=admin_auth_header)
+
+    draft_after_post = client.get(
+        "/api/v1/journal-entries", params={"search": f"FILTER-{suffix}", "status": "DRAFT"}, headers=admin_auth_header
+    ).json()
+    assert draft_after_post["total"] == 0
+
+    posted_only = client.get(
+        "/api/v1/journal-entries", params={"search": f"FILTER-{suffix}", "status": "POSTED"}, headers=admin_auth_header
+    ).json()
+    assert posted_only["total"] == 1
+
+    in_range = client.get(
+        "/api/v1/journal-entries",
+        params={"search": f"FILTER-{suffix}", "date_from": "2025-03-01", "date_to": "2025-03-31"},
+        headers=admin_auth_header,
+    ).json()
+    assert in_range["total"] == 1
+
+    out_of_range = client.get(
+        "/api/v1/journal-entries",
+        params={"search": f"FILTER-{suffix}", "date_from": "2025-04-01", "date_to": "2025-04-30"},
+        headers=admin_auth_header,
+    ).json()
+    assert out_of_range["total"] == 0
+
+
+def test_payment_list_filters_by_status_and_date_range(client, admin_auth_header, vendor_id):
+    bank_journal_id = _journal_id(client, admin_auth_header, "Bank")
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2025-05-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "75.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+    payment = client.post(
+        "/api/v1/payments",
+        json={
+            "payment_type": "SEND", "method": "BANK", "partner_id": vendor_id, "journal_id": bank_journal_id,
+            "payment_date": "2025-05-10", "amount": "75.00",
+            "allocations": [{"document_id": bill["id"], "amount_allocated": "75.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    posted_only = client.get(
+        "/api/v1/payments",
+        params={"search": payment["payment_number"], "status": "POSTED"},
+        headers=admin_auth_header,
+    ).json()
+    assert posted_only["total"] == 1
+
+    cancelled_only = client.get(
+        "/api/v1/payments",
+        params={"search": payment["payment_number"], "status": "CANCELLED"},
+        headers=admin_auth_header,
+    ).json()
+    assert cancelled_only["total"] == 0
+
+    in_range = client.get(
+        "/api/v1/payments",
+        params={"search": payment["payment_number"], "date_from": "2025-05-01", "date_to": "2025-05-31"},
+        headers=admin_auth_header,
+    ).json()
+    assert in_range["total"] == 1
+
+    out_of_range = client.get(
+        "/api/v1/payments",
+        params={"search": payment["payment_number"], "date_from": "2025-06-01", "date_to": "2025-06-30"},
+        headers=admin_auth_header,
+    ).json()
+    assert out_of_range["total"] == 0

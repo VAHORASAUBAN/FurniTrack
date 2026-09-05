@@ -2,7 +2,9 @@
 one service (`document_service`) and one response shape (`DocumentOut`);
 `doc_type` is bound by which prefix the request came in on, never by the
 request body — see `document_service.create_document`'s caller here."""
-from fastapi import APIRouter, Depends, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy import or_
 
@@ -11,7 +13,7 @@ from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.exceptions import AppError, NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
 from app.models import Document
-from app.models.enums import DocType, UserRole
+from app.models.enums import DocStatus, DocType, UserRole
 from app.schemas.common import Page
 from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate, SendEmailRequest, SendEmailResponse
 from app.services import document_service, email_service, master_service, pdf_service
@@ -36,12 +38,26 @@ def _get_document(db: DbSession, document_id: int, *, expected_type: DocType) ->
     return document
 
 
-def _list(db: DbSession, params: PageParams, doc_type: DocType) -> Page[DocumentOut]:
+def _list(
+    db: DbSession,
+    params: PageParams,
+    doc_type: DocType,
+    *,
+    status: DocStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> Page[DocumentOut]:
     query = db.query(Document).filter(Document.doc_type == doc_type)
 
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(or_(*(getattr(Document, f).ilike(like) for f in SEARCH_FIELDS)))
+    if status is not None:
+        query = query.filter(Document.status == status)
+    if date_from is not None:
+        query = query.filter(Document.doc_date >= date_from)
+    if date_to is not None:
+        query = query.filter(Document.doc_date <= date_to)
     query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date"}, "-doc_date")
     items, total = paginate(query, params)
     for item in items:
@@ -54,8 +70,14 @@ def _list(db: DbSession, params: PageParams, doc_type: DocType) -> Page[Document
 
 
 @router.get("/orders", response_model=Page[DocumentOut])
-def list_purchase_orders(db: DbSession, params: PageParams = Depends(page_params)):
-    return _list(db, params, DocType.PURCHASE_ORDER)
+def list_purchase_orders(
+    db: DbSession,
+    params: PageParams = Depends(page_params),
+    status: DocStatus | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+):
+    return _list(db, params, DocType.PURCHASE_ORDER, status=status, date_from=date_from, date_to=date_to)
 
 
 @router.post("/orders", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
@@ -104,8 +126,14 @@ def create_bill_from_order(order_id: int, db: DbSession, user: CurrentUser):
 
 
 @router.get("/bills", response_model=Page[DocumentOut])
-def list_vendor_bills(db: DbSession, params: PageParams = Depends(page_params)):
-    return _list(db, params, DocType.VENDOR_BILL)
+def list_vendor_bills(
+    db: DbSession,
+    params: PageParams = Depends(page_params),
+    status: DocStatus | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+):
+    return _list(db, params, DocType.VENDOR_BILL, status=status, date_from=date_from, date_to=date_to)
 
 
 @router.post("/bills", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)

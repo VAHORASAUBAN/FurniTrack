@@ -18,6 +18,14 @@ export function SalesOrderListPage() {
       onRowClick={(d) => navigate(`/sales/orders/${d.id}`)}
       supportsArchive={false}
       searchPlaceholder="Search by SO number or reference…"
+      statusFilter={{
+        options: [
+          { value: 'DRAFT', label: 'Draft' },
+          { value: 'CONFIRMED', label: 'Confirmed' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Order Date' }}
       columns={[
         {
           header: 'SO No.', sortKey: 'doc_number', csvValue: (d) => d.doc_number,

@@ -18,6 +18,14 @@ export function JournalEntryListPage() {
       onRowClick={(je) => navigate(`/journal-entries/${je.id}`)}
       supportsArchive={false}
       searchPlaceholder="Search by entry number or reference…"
+      statusFilter={{
+        options: [
+          { value: 'DRAFT', label: 'Draft' },
+          { value: 'POSTED', label: 'Posted' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Entry Date' }}
       columns={[
         {
           header: 'Number', sortKey: 'entry_number', csvValue: (je) => je.entry_number,

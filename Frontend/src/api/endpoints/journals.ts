@@ -1,9 +1,9 @@
 import { apiClient } from '../client'
 import type { Many2OneOption } from '../../components/shared/Many2OneSelect'
 import type { ListParams, Page } from '../../types/api'
-import type { Journal, JournalInput } from '../../types/journal'
+import type { Journal, JournalInput, JournalType } from '../../types/journal'
 
-export async function listJournals(params: ListParams): Promise<Page<Journal>> {
+export async function listJournals(params: ListParams & { journal_type?: JournalType }): Promise<Page<Journal>> {
   const resp = await apiClient.get<Page<Journal>>('/journals', { params })
   return resp.data
 }

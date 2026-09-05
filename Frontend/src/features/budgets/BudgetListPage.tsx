@@ -17,6 +17,15 @@ export function BudgetListPage() {
       onNew={() => navigate('/budgets/new')}
       onRowClick={(b) => navigate(`/budgets/${b.id}`)}
       searchPlaceholder="Search by budget name…"
+      statusFilter={{
+        options: [
+          { value: 'DRAFT', label: 'Draft' },
+          { value: 'CONFIRMED', label: 'Confirmed' },
+          { value: 'REVISED', label: 'Revised' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Start Date' }}
       columns={[
         {
           header: 'Name', sortKey: 'name', csvValue: (b) => b.name,

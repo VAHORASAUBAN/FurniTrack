@@ -1,9 +1,9 @@
 import { apiClient } from '../client'
 import type { ListParams, Page } from '../../types/api'
-import type { AccountInput, ChartOfAccount } from '../../types/account'
+import type { AccountInput, AccountType, ChartOfAccount } from '../../types/account'
 import type { Many2OneOption } from '../../components/shared/Many2OneSelect'
 
-export async function listAccounts(params: ListParams): Promise<Page<ChartOfAccount>> {
+export async function listAccounts(params: ListParams & { account_type?: AccountType }): Promise<Page<ChartOfAccount>> {
   const resp = await apiClient.get<Page<ChartOfAccount>>('/accounts', { params })
   return resp.data
 }

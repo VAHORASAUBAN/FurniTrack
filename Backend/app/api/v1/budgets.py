@@ -1,12 +1,14 @@
 """Budget router — design doc §5.7. Confirm/edit follow the same
 Draft-only-editable pattern as documents and manual journal entries;
 Cancel is Admin-only, matching the permission matrix (§9.1)."""
-from fastapi import APIRouter, Depends, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.deps import DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import Budget
-from app.models.enums import UserRole
+from app.models.enums import BudgetStatus, UserRole
 from app.schemas.budget import BudgetCreate, BudgetOut, BudgetUpdate
 from app.schemas.common import Page
 from app.services import budget_service, master_service
@@ -22,9 +24,16 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[BudgetOut])
-def list_budgets(db: DbSession, params: PageParams = Depends(page_params)):
+def list_budgets(
+    db: DbSession,
+    params: PageParams = Depends(page_params),
+    status: BudgetStatus | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+):
     items, total = master_service.list_records(
-        db, Budget, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-start_date"
+        db, Budget, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-start_date",
+        exact_filters={"status": status}, date_range=("start_date", date_from, date_to),
     )
     for item in items:
         budget_service.attach_achieved(db, item)

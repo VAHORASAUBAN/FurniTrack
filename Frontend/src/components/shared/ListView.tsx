@@ -34,6 +34,11 @@ export interface KanbanColumn {
   label: string
 }
 
+export interface StatusFilterOption {
+  value: string
+  label: string
+}
+
 export interface KanbanConfig<T> {
   groupBy: (row: T) => string
   columns: KanbanColumn[]
@@ -56,6 +61,13 @@ interface ListViewProps<T> {
    * larger page instead of paging, since a board isn't naturally split
    * across pages the way a table is. */
   kanban?: KanbanConfig<T>
+  /** A status/type dropdown - only shown when the backend actually
+   * supports filtering that field (see each router's exact_filters /
+   * status Query param before adding this). */
+  statusFilter?: { options: StatusFilterOption[]; label?: string }
+  /** From/To date inputs, filtering whichever date column that module's
+   * backend range-filters on (doc_date, entry_date, payment_date, …). */
+  dateRangeFilter?: { label?: string }
 }
 
 const EXPORT_PAGE_SIZE = 1000
@@ -91,28 +103,45 @@ export function ListView<T>({
   supportsArchive = true,
   searchPlaceholder = 'Search…',
   kanban,
+  statusFilter,
+  dateRangeFilter,
 }: ListViewProps<T>) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<string | undefined>(undefined)
   const [includeArchived, setIncludeArchived] = useState(false)
+  const [status, setStatus] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [isExporting, setIsExporting] = useState(false)
   const isKanban = Boolean(kanban) && viewMode === 'kanban'
   const pageSize = isKanban ? 100 : 25
+  const hasActiveFilters = Boolean(search || status || dateFrom || dateTo || includeArchived)
+
+  const filterParams = {
+    search: search || undefined,
+    sort,
+    include_archived: includeArchived,
+    status: status || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+  }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: [queryKey, { search, page: isKanban ? 1 : page, sort, includeArchived, pageSize }],
-    queryFn: () =>
-      fetcher({
-        search: search || undefined,
-        sort,
-        page: isKanban ? 1 : page,
-        page_size: pageSize,
-        include_archived: includeArchived,
-      }),
+    queryKey: [queryKey, { ...filterParams, page: isKanban ? 1 : page, pageSize }],
+    queryFn: () => fetcher({ ...filterParams, page: isKanban ? 1 : page, page_size: pageSize }),
     placeholderData: (prev) => prev,
   })
+
+  function clearFilters() {
+    setSearch('')
+    setStatus('')
+    setDateFrom('')
+    setDateTo('')
+    setIncludeArchived(false)
+    setPage(1)
+  }
 
   function toggleSort(key: string) {
     setSort((prev) => (prev === key ? `-${key}` : prev === `-${key}` ? undefined : key))
@@ -122,13 +151,7 @@ export function ListView<T>({
   async function handleExportCsv() {
     setIsExporting(true)
     try {
-      const result = await fetcher({
-        search: search || undefined,
-        sort,
-        page: 1,
-        page_size: EXPORT_PAGE_SIZE,
-        include_archived: includeArchived,
-      })
+      const result = await fetcher({ ...filterParams, page: 1, page_size: EXPORT_PAGE_SIZE })
       const rows = [
         columns.map((c) => toCsvField(c.header)).join(','),
         ...result.items.map((row) => columns.map((c) => toCsvField(cellText(c, row))).join(',')),
@@ -187,6 +210,57 @@ export function ListView<T>({
             />
             Show archived
           </label>
+        )}
+        {statusFilter && (
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value)
+              setPage(1)
+            }}
+            className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2.5 py-2 text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+          >
+            <option value="">{statusFilter.label ?? 'Status'}: All</option>
+            {statusFilter.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {dateRangeFilter && (
+          <div className="flex items-center gap-1.5 text-sm text-[var(--color-ink-3)]">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setPage(1)
+              }}
+              title={`${dateRangeFilter.label ?? 'Date'} from`}
+              className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2 py-[7px] text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+            />
+            <span>–</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setPage(1)
+              }}
+              title={`${dateRangeFilter.label ?? 'Date'} to`}
+              className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2 py-[7px] text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+        )}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-sm font-medium text-[var(--color-ink-3)] underline decoration-dotted underline-offset-2 hover:text-[var(--color-accent)]"
+          >
+            Clear filters
+          </button>
         )}
 
         <div className="ml-auto flex items-center gap-2">

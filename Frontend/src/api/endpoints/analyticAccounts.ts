@@ -1,9 +1,11 @@
 import { apiClient } from '../client'
 import type { ListParams, Page } from '../../types/api'
-import type { AnalyticAccount, AnalyticAccountInput } from '../../types/analyticAccount'
+import type { AnalyticAccount, AnalyticAccountInput, AnalyticType } from '../../types/analyticAccount'
 import type { Many2OneOption } from '../../components/shared/Many2OneSelect'
 
-export async function listAnalyticAccounts(params: ListParams): Promise<Page<AnalyticAccount>> {
+export async function listAnalyticAccounts(
+  params: ListParams & { analytic_type?: AnalyticType }
+): Promise<Page<AnalyticAccount>> {
   const resp = await apiClient.get<Page<AnalyticAccount>>('/analytic-accounts', { params })
   return resp.data
 }

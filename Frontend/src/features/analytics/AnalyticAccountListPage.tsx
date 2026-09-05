@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { listAnalyticAccounts } from '../../api/endpoints/analyticAccounts'
 import { ListView } from '../../components/shared/ListView'
 import { StatusPill } from '../../components/shared/StatusPill'
-import type { AnalyticAccount } from '../../types/analyticAccount'
+import type { AnalyticAccount, AnalyticType } from '../../types/analyticAccount'
 
 export function AnalyticAccountListPage() {
   const navigate = useNavigate()
@@ -11,10 +11,17 @@ export function AnalyticAccountListPage() {
     <ListView<AnalyticAccount>
       title="Analytic Accounts"
       queryKey="analytic-accounts"
-      fetcher={listAnalyticAccounts}
+      fetcher={(params) => listAnalyticAccounts({ ...params, analytic_type: params.status as AnalyticType | undefined })}
       rowKey={(a) => a.id}
       onNew={() => navigate('/analytics/new')}
       onRowClick={(a) => navigate(`/analytics/${a.id}`)}
+      statusFilter={{
+        label: 'Type',
+        options: [
+          { value: 'INCOME', label: 'Income' },
+          { value: 'EXPENSE', label: 'Expense' },
+        ],
+      }}
       columns={[
         {
           header: 'Name', sortKey: 'name', csvValue: (a) => a.name,

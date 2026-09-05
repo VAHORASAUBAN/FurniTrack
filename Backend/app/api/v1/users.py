@@ -1,7 +1,7 @@
 """User management router — the wireframe's "Create User" screen.
 Admin-only end to end: only an Admin may create a login of any role, and
 only an Admin may deactivate one."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.deps import DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
@@ -20,8 +20,8 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[UserOut])
-def list_users(db: DbSession, params: PageParams = Depends(page_params)):
-    items, total = user_service.list_users(db, params)
+def list_users(db: DbSession, params: PageParams = Depends(page_params), role: UserRole | None = Query(default=None)):
+    items, total = user_service.list_users(db, params, role=role)
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))
 

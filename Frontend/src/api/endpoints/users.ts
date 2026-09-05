@@ -1,8 +1,8 @@
 import { apiClient } from '../client'
 import type { ListParams, Page } from '../../types/api'
-import type { AppUser, UserCreateInput } from '../../types/user'
+import type { AppUser, UserCreateInput, UserRoleValue } from '../../types/user'
 
-export async function listUsers(params: ListParams): Promise<Page<AppUser>> {
+export async function listUsers(params: ListParams & { role?: UserRoleValue }): Promise<Page<AppUser>> {
   const resp = await apiClient.get<Page<AppUser>>('/users', { params })
   return resp.data
 }

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { listAccounts } from '../../api/endpoints/accounts'
 import { ListView } from '../../components/shared/ListView'
 import { StatusPill } from '../../components/shared/StatusPill'
-import { ACCOUNT_TYPE_LABELS, type ChartOfAccount } from '../../types/account'
+import { ACCOUNT_TYPE_LABELS, type AccountType, type ChartOfAccount } from '../../types/account'
 
 export function AccountListPage() {
   const navigate = useNavigate()
@@ -11,11 +11,15 @@ export function AccountListPage() {
     <ListView<ChartOfAccount>
       title="Chart of Accounts"
       queryKey="accounts"
-      fetcher={listAccounts}
+      fetcher={(params) => listAccounts({ ...params, account_type: params.status as AccountType | undefined })}
       rowKey={(a) => a.id}
       onNew={() => navigate('/accounts/new')}
       onRowClick={(a) => navigate(`/accounts/${a.id}`)}
       searchPlaceholder="Search by code or name…"
+      statusFilter={{
+        label: 'Type',
+        options: Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+      }}
       columns={[
         {
           header: 'Code', sortKey: 'code', csvValue: (a) => a.code,

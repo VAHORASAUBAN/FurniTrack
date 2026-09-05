@@ -6,7 +6,7 @@ these for the one or two operations that need extra behaviour (portal
 provisioning, "at most one is_receivable account", etc.) — everything else
 calls straight through.
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import or_
@@ -24,13 +24,29 @@ def list_records(
     search_fields: list[str] = (),
     sort_fields: set[str] = frozenset(),
     default_sort: str = "id",
+    exact_filters: dict[str, Any] | None = None,
+    date_range: tuple[str, date | None, date | None] | None = None,
 ) -> tuple[list, int]:
+    """`exact_filters` — {column_name: value}; a None value is skipped (lets
+    a router pass e.g. {"status": maybe_none} unconditionally instead of
+    hand-writing an `if status is not None` per field). `date_range` —
+    (column_name, from_date, to_date), either bound optional."""
     query = db.query(model)
     if not params.include_archived and hasattr(model, "is_active"):
         query = query.filter(model.is_active.is_(True))
     if params.search and search_fields:
         like = f"%{params.search}%"
         query = query.filter(or_(*(getattr(model, f).ilike(like) for f in search_fields)))
+    for field, value in (exact_filters or {}).items():
+        if value is not None:
+            query = query.filter(getattr(model, field) == value)
+    if date_range:
+        field, date_from, date_to = date_range
+        column = getattr(model, field)
+        if date_from is not None:
+            query = query.filter(column >= date_from)
+        if date_to is not None:
+            query = query.filter(column <= date_to)
     query = apply_sort(query, params.sort, model, sort_fields | {default_sort}, default_sort)
     return paginate(query, params)
 

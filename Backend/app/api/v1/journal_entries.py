@@ -1,12 +1,14 @@
 """Journal Entry router — design doc §5.4. The manual-entry flow: Draft →
 edit lines → Post (blocking on the balance rule) → optionally Cancel
 (reversal) or Reset to Draft (Admin-only correction, no reversal)."""
-from fastapi import APIRouter, Depends, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import JournalEntry
-from app.models.enums import UserRole
+from app.models.enums import JournalEntryStatus, UserRole
 from app.schemas.common import Page
 from app.schemas.journal_entry import JournalEntryCreate, JournalEntryOut, JournalEntryUpdate
 from app.services import journal_entry_service, master_service
@@ -22,9 +24,16 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[JournalEntryOut])
-def list_journal_entries(db: DbSession, params: PageParams = Depends(page_params)):
+def list_journal_entries(
+    db: DbSession,
+    params: PageParams = Depends(page_params),
+    status: JournalEntryStatus | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+):
     items, total = master_service.list_records(
-        db, JournalEntry, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-entry_date"
+        db, JournalEntry, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-entry_date",
+        exact_filters={"status": status}, date_range=("entry_date", date_from, date_to),
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))

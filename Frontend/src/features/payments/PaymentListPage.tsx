@@ -26,6 +26,13 @@ export function PaymentListPage({ paymentType, title, basePath }: PaymentListPag
       onRowClick={(p) => navigate(`${basePath}/${p.id}`)}
       supportsArchive={false}
       searchPlaceholder="Search by payment number or note…"
+      statusFilter={{
+        options: [
+          { value: 'POSTED', label: 'Posted' },
+          { value: 'CANCELLED', label: 'Cancelled' },
+        ],
+      }}
+      dateRangeFilter={{ label: 'Payment Date' }}
       columns={[
         {
           header: 'Payment No.', sortKey: 'payment_number', csvValue: (p) => p.payment_number,
