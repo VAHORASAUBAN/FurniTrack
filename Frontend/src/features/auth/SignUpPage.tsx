@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
 import { signup } from '../../api/endpoints/auth'
+import { PasswordInput } from '../../components/shared/PasswordInput'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { AuthBrandPanel } from './AuthBrandPanel'
 
@@ -93,8 +94,7 @@ export function SignUpPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   {...register('password')}
                   className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
                 />
@@ -103,8 +103,7 @@ export function SignUpPage() {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Re-Enter</label>
-                <input
-                  type="password"
+                <PasswordInput
                   {...register('password_confirm')}
                   className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
                 />

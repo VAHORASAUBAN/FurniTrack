@@ -1,5 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { AlertTriangle, ArrowLeft } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { StatusPill } from './StatusPill'
 
 export interface FormAction {
@@ -17,7 +17,12 @@ const VARIANT_CLASSES: Record<NonNullable<FormAction['variant']>, string> = {
 
 /** Design doc §7.4 — the action bar every form screen in the wireframes
  * shares: Back on the left, a status pill next to the title, and
- * contextual actions (New/Confirm/Print/Pay/…) on the right. */
+ * contextual actions (New/Confirm/Print/Pay/…) on the right.
+ *
+ * Every 'danger' action (Cancel, Reset to Draft, Archive) goes through a
+ * one-step confirmation here rather than firing on the first click - this
+ * one guard covers every such action across the app since they all go
+ * through this component's action bar. */
 export function FormShell({
   title,
   status,
@@ -31,6 +36,16 @@ export function FormShell({
   onBack: () => void
   children: ReactNode
 }) {
+  const [pendingAction, setPendingAction] = useState<FormAction | null>(null)
+
+  function handleActionClick(action: FormAction) {
+    if (action.variant === 'danger') {
+      setPendingAction(action)
+    } else {
+      action.onClick()
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-4">
@@ -50,7 +65,7 @@ export function FormShell({
             {actions.map((action) => (
               <button
                 key={action.label}
-                onClick={action.onClick}
+                onClick={() => handleActionClick(action)}
                 disabled={action.disabled}
                 className={`rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-40 ${VARIANT_CLASSES[action.variant ?? 'secondary']}`}
               >
@@ -63,6 +78,43 @@ export function FormShell({
       <div className="rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-md)]">
         {children}
       </div>
+
+      {pendingAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+          onClick={() => setPendingAction(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-lg)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center gap-2.5 text-[var(--color-danger)]">
+              <AlertTriangle size={18} />
+              <h2 className="font-display text-base font-semibold">{pendingAction.label}?</h2>
+            </div>
+            <p className="mb-5 text-sm text-[var(--color-ink-2)]">
+              This action can't be undone. Are you sure you want to continue?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setPendingAction(null)}
+                className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3.5 py-2 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  pendingAction.onClick()
+                  setPendingAction(null)
+                }}
+                className="rounded-md bg-[var(--color-danger)] px-3.5 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Yes, {pendingAction.label}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

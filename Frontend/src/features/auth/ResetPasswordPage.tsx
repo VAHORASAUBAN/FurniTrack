@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { resetPassword } from '../../api/endpoints/auth'
 import { getApiErrorMessage } from '../../api/client'
+import { PasswordInput } from '../../components/shared/PasswordInput'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { AuthBrandPanel } from './AuthBrandPanel'
 
@@ -84,8 +85,7 @@ export function ResetPasswordPage() {
               <form onSubmit={handleSubmit(onSubmit)} className="mt-7 flex flex-col gap-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">New password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     {...register('new_password')}
                     autoFocus
                     className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
@@ -97,8 +97,7 @@ export function ResetPasswordPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Confirm password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     {...register('new_password_confirm')}
                     className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
                   />

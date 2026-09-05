@@ -9,6 +9,7 @@ import { contactOptions } from '../../api/endpoints/contacts'
 import { archiveUser, createUser, getUser, unarchiveUser } from '../../api/endpoints/users'
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
+import { PasswordInput } from '../../components/shared/PasswordInput'
 import { USER_ROLE_LABELS } from '../../types/user'
 
 // Wireframe's stated Create User rules: login_id 6-12 chars, unique
@@ -172,12 +173,12 @@ export function UserFormPage() {
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Password</label>
-          <input type="password" {...register('password')} className={inputClass} />
+          <PasswordInput {...register('password')} className={inputClass} />
           {errors.password && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.password.message}</p>}
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Re-Enter Password</label>
-          <input type="password" {...register('password_confirm')} className={inputClass} />
+          <PasswordInput {...register('password_confirm')} className={inputClass} />
           {errors.password_confirm && (
             <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.password_confirm.message}</p>
           )}

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { login } from '../../api/endpoints/auth'
 import { getApiErrorMessage } from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
+import { PasswordInput } from '../../components/shared/PasswordInput'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { AuthBrandPanel } from './AuthBrandPanel'
 
@@ -98,8 +99,7 @@ export function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                type="password"
+              <PasswordInput
                 {...register('password')}
                 className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
               />
