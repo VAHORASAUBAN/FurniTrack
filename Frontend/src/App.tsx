@@ -2,6 +2,8 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { AppShell } from './components/layout/AppShell'
 import { ComingSoon } from './components/shared/ComingSoon'
 import { LoginPage } from './features/auth/LoginPage'
+import { ContactFormPage } from './features/contacts/ContactFormPage'
+import { ContactListPage } from './features/contacts/ContactListPage'
 import { useSessionBootstrap } from './hooks/useSessionBootstrap'
 import { RequireRole } from './router/RequireRole'
 
@@ -23,7 +25,9 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<ComingSoon title="Dashboard" />} />
 
-            <Route path="/contacts" element={<ComingSoon title="Contacts" />} />
+            <Route path="/contacts" element={<ContactListPage />} />
+            <Route path="/contacts/:id" element={<ContactFormPage />} />
+
             <Route path="/products" element={<ComingSoon title="Products" />} />
             <Route path="/accounts" element={<ComingSoon title="Chart of Accounts" />} />
             <Route path="/journals" element={<ComingSoon title="Journals" />} />
