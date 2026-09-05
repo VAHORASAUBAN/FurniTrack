@@ -16,7 +16,16 @@ from sqlalchemy.orm import Session
 from app.accounting import engine, resolver, rules, sequence, validators
 from app.core.exceptions import PostingError
 from app.models import Document, JournalEntry, Payment, PaymentAllocation
-from app.models.enums import DocStatus, JournalEntrySourceType, PaymentStatus
+from app.models.enums import DocStatus, JournalEntrySourceType, PaymentStatus, PaymentType
+from app.services import notification_service
+
+
+def _payment_link(payment: Payment) -> str:
+    # Matches Frontend/src/App.tsx's two payment routes - SEND documents
+    # (bills paid) live under /purchase/payments, RECEIVE (invoices
+    # collected) under /sales/receipts.
+    prefix = "/purchase/payments" if payment.payment_type == PaymentType.SEND else "/sales/receipts"
+    return f"{prefix}/{payment.id}"
 
 
 def _locked_amount_due(db: Session, document_id: int) -> tuple[Document, Decimal]:
@@ -79,6 +88,13 @@ def create_and_post_payment(db: Session, data: dict, *, created_by_user_id: int)
 
     payment.status = PaymentStatus.POSTED
     db.flush()
+    verb = "made" if payment.payment_type == PaymentType.SEND else "received"
+    notification_service.notify(
+        db,
+        f"Payment {payment.payment_number} for {payment.amount:,.2f} was {verb}.",
+        link=_payment_link(payment),
+        actor_user_id=created_by_user_id,
+    )
     return payment
 
 
@@ -107,4 +123,10 @@ def cancel_payment(db: Session, payment: Payment, *, cancelled_by_user_id: int) 
 
     payment.status = PaymentStatus.CANCELLED
     db.flush()
+    notification_service.notify(
+        db,
+        f"Payment {payment.payment_number} was cancelled (reversed).",
+        link=_payment_link(payment),
+        actor_user_id=cancelled_by_user_id,
+    )
     return payment

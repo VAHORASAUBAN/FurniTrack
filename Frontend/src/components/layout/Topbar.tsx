@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi } from '../../api/endpoints/auth'
 import { useAuthStore } from '../../stores/authStore'
+import { NotificationBell } from '../shared/NotificationBell'
 import { ThemeToggle } from '../shared/ThemeToggle'
 
 const ROLE_STYLES: Record<string, string> = {
@@ -37,6 +38,7 @@ export function Topbar() {
         {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
       </div>
       <div className="flex items-center gap-4">
+        {user?.role !== 'PORTAL' && <NotificationBell />}
         <ThemeToggle />
         <span className="h-6 w-px bg-[var(--color-rule)]" />
         {user && (

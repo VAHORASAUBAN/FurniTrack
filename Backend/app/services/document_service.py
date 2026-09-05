@@ -14,6 +14,7 @@ from app.accounting import engine, resolver, rules, sequence, validators
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models import Document, DocumentLine, JournalEntry, Product
 from app.models.enums import DocStatus, DocType, JournalEntrySourceType
+from app.services import notification_service
 
 TWO_PLACES = Decimal("0.01")
 
@@ -21,6 +22,21 @@ _PURCHASE_TYPES = {DocType.PURCHASE_ORDER, DocType.VENDOR_BILL}
 _JOURNAL_ENTRY_SOURCE_BY_DOC_TYPE = {
     DocType.VENDOR_BILL: JournalEntrySourceType.VENDOR_BILL,
     DocType.CUSTOMER_INVOICE: JournalEntrySourceType.CUSTOMER_INVOICE,
+}
+# Mirrors Frontend/src/lib/documentRoutes.ts's DOC_TYPE_ROUTE - kept in sync
+# by hand since a notification's link is just a plain string, not something
+# either side imports from the other.
+_DOC_TYPE_ROUTE = {
+    DocType.PURCHASE_ORDER: "/purchase/orders",
+    DocType.VENDOR_BILL: "/purchase/bills",
+    DocType.SALES_ORDER: "/sales/orders",
+    DocType.CUSTOMER_INVOICE: "/sales/invoices",
+}
+_DOC_TYPE_LABEL = {
+    DocType.PURCHASE_ORDER: "Purchase order",
+    DocType.VENDOR_BILL: "Vendor bill",
+    DocType.SALES_ORDER: "Sales order",
+    DocType.CUSTOMER_INVOICE: "Invoice",
 }
 
 
@@ -219,6 +235,13 @@ def post_document(db: Session, document: Document, *, posted_by_user_id: int) ->
 
     document.status = DocStatus.POSTED
     db.flush()
+    notification_service.notify(
+        db,
+        f"{_DOC_TYPE_LABEL[document.doc_type]} {document.doc_number} was posted "
+        f"for {document.total_amount:,.2f}.",
+        link=f"{_DOC_TYPE_ROUTE[document.doc_type]}/{document.id}",
+        actor_user_id=posted_by_user_id,
+    )
     return document
 
 
@@ -251,4 +274,10 @@ def cancel_posted_document(db: Session, document: Document, *, cancelled_by_user
 
     document.status = DocStatus.CANCELLED
     db.flush()
+    notification_service.notify(
+        db,
+        f"{_DOC_TYPE_LABEL[document.doc_type]} {document.doc_number} was cancelled (reversed).",
+        link=f"{_DOC_TYPE_ROUTE[document.doc_type]}/{document.id}",
+        actor_user_id=cancelled_by_user_id,
+    )
     return document

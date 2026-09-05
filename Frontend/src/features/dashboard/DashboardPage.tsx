@@ -2,11 +2,54 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowDownCircle, ArrowUpCircle, Inbox, RotateCcw, ShoppingCart, SlidersHorizontal, Target } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { listBudgets } from '../../api/endpoints/budgets'
 import { getDashboardSummary } from '../../api/endpoints/dashboard'
+import { listCustomerInvoices, listSalesOrders } from '../../api/endpoints/sales'
+import { listPurchaseOrders, listVendorBills } from '../../api/endpoints/purchase'
+import { DashboardDetailModal, type DetailColumn } from '../../components/shared/DashboardDetailModal'
 import { StatusPill } from '../../components/shared/StatusPill'
 import { documentPath, DOC_TYPE_LABEL } from '../../lib/documentRoutes'
 import { formatMoney } from '../../lib/money'
 import { useDashboardPrefsStore, WIDGET_LABELS, type DashboardWidget } from '../../stores/dashboardPrefsStore'
+import type { Budget } from '../../types/budget'
+import type { Document } from '../../types/document'
+
+type DetailKind = 'customer_invoices' | 'vendor_bills' | 'sales_orders' | 'purchase_orders' | 'budgets'
+type PaymentFilter = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'DRAFT' | null
+interface DetailView {
+  kind: DetailKind
+  filter: PaymentFilter
+}
+
+const DOC_COLUMNS: DetailColumn<Document>[] = [
+  { header: 'Doc No.', render: (d) => <span className="font-mono text-xs">{d.doc_number}</span> },
+  { header: 'Date', render: (d) => d.doc_date },
+  {
+    header: 'Total', className: 'text-right font-mono', render: (d) => formatMoney(d.total_amount),
+  },
+  {
+    header: 'Status',
+    render: (d) => <StatusPill status={d.balance?.payment_status === 'PAID' ? 'PAID' : d.status} />,
+  },
+]
+
+const BUDGET_COLUMNS: DetailColumn<Budget>[] = [
+  { header: 'Name', render: (b) => b.name },
+  { header: 'Period', render: (b) => `${b.start_date} → ${b.end_date}` },
+  {
+    header: 'Achieved',
+    className: 'text-right font-mono',
+    render: (b) => {
+      const planned = b.lines.reduce((sum, l) => sum + Number(l.planned_amount), 0)
+      const achieved = b.lines.reduce((sum, l) => sum + Number(l.achieved_amount), 0)
+      return planned === 0 ? '—' : `${((achieved / planned) * 100).toFixed(0)}%`
+    },
+  },
+]
+
+const PAYMENT_FILTER_LABEL: Record<Exclude<PaymentFilter, null>, string> = {
+  UNPAID: 'unpaid', PARTIALLY_PAID: 'partially paid', PAID: 'paid', DRAFT: 'draft',
+}
 
 function KpiTile({
   icon,
@@ -14,16 +57,22 @@ function KpiTile({
   value,
   sub,
   accent,
+  onClick,
 }: {
   icon: ReactNode
   label: string
   value: string
   sub: string
   accent?: 'accent' | 'warning' | 'success'
+  onClick?: () => void
 }) {
   const tone = accent ?? 'accent'
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+    <div
+      onClick={onClick}
+      title={onClick ? 'Click for details' : undefined}
+      className={`flex flex-col gap-3 rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] transition-shadow ${onClick ? 'cursor-pointer hover:shadow-[var(--shadow-md)]' : ''}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">{label}</span>
         <span
@@ -126,6 +175,7 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const hidden = useDashboardPrefsStore((s) => s.hidden)
   const isVisible = (w: DashboardWidget) => !hidden.includes(w)
+  const [detailView, setDetailView] = useState<DetailView | null>(null)
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,
@@ -162,6 +212,7 @@ export function DashboardPage() {
               value={formatMoney(data.customer_invoices.total_amount_due)}
               sub={`${data.customer_invoices.unpaid_count} unpaid · ${data.customer_invoices.partially_paid_count} partial`}
               accent="warning"
+              onClick={() => setDetailView({ kind: 'customer_invoices', filter: null })}
             />
           )}
           {isVisible('kpi_payable') && (
@@ -171,6 +222,7 @@ export function DashboardPage() {
               value={formatMoney(data.vendor_bills.total_amount_due)}
               sub={`${data.vendor_bills.unpaid_count} unpaid · ${data.vendor_bills.partially_paid_count} partial`}
               accent="warning"
+              onClick={() => setDetailView({ kind: 'vendor_bills', filter: null })}
             />
           )}
           {isVisible('kpi_sales_orders') && (
@@ -179,6 +231,7 @@ export function DashboardPage() {
               label="Sales Orders"
               value={String(data.sales_orders.confirmed)}
               sub={`confirmed · ${data.sales_orders.draft} draft`}
+              onClick={() => setDetailView({ kind: 'sales_orders', filter: null })}
             />
           )}
           {isVisible('kpi_purchase_orders') && (
@@ -187,6 +240,7 @@ export function DashboardPage() {
               label="Purchase Orders"
               value={String(data.purchase_orders.confirmed)}
               sub={`confirmed · ${data.purchase_orders.draft} draft`}
+              onClick={() => setDetailView({ kind: 'purchase_orders', filter: null })}
             />
           )}
           {isVisible('kpi_budget_achieved') && (
@@ -196,6 +250,7 @@ export function DashboardPage() {
               value={`${budgetPct.toFixed(0)}%`}
               sub={`${data.budgets.active_count} active budget${data.budgets.active_count === 1 ? '' : 's'}`}
               accent="success"
+              onClick={() => setDetailView({ kind: 'budgets', filter: null })}
             />
           )}
         </div>
@@ -208,11 +263,12 @@ export function DashboardPage() {
               <h2 className="mb-3 font-display text-sm font-semibold text-[var(--color-ink)]">Customer Invoices</h2>
               <StatusBreakdown
                 rows={[
-                  ['Unpaid', data.customer_invoices.unpaid_count, 'var(--color-warning)'],
-                  ['Partially paid', data.customer_invoices.partially_paid_count, 'var(--color-warning)'],
-                  ['Paid', data.customer_invoices.paid_count, 'var(--color-success)'],
-                  ['Draft', data.customer_invoices.draft_count, 'var(--color-ink-3)'],
+                  ['Unpaid', data.customer_invoices.unpaid_count, 'var(--color-warning)', 'UNPAID'],
+                  ['Partially paid', data.customer_invoices.partially_paid_count, 'var(--color-warning)', 'PARTIALLY_PAID'],
+                  ['Paid', data.customer_invoices.paid_count, 'var(--color-success)', 'PAID'],
+                  ['Draft', data.customer_invoices.draft_count, 'var(--color-ink-3)', 'DRAFT'],
                 ]}
+                onRowClick={(filter) => setDetailView({ kind: 'customer_invoices', filter })}
               />
             </div>
           )}
@@ -221,11 +277,12 @@ export function DashboardPage() {
               <h2 className="mb-3 font-display text-sm font-semibold text-[var(--color-ink)]">Vendor Bills</h2>
               <StatusBreakdown
                 rows={[
-                  ['Unpaid', data.vendor_bills.unpaid_count, 'var(--color-warning)'],
-                  ['Partially paid', data.vendor_bills.partially_paid_count, 'var(--color-warning)'],
-                  ['Paid', data.vendor_bills.paid_count, 'var(--color-success)'],
-                  ['Draft', data.vendor_bills.draft_count, 'var(--color-ink-3)'],
+                  ['Unpaid', data.vendor_bills.unpaid_count, 'var(--color-warning)', 'UNPAID'],
+                  ['Partially paid', data.vendor_bills.partially_paid_count, 'var(--color-warning)', 'PARTIALLY_PAID'],
+                  ['Paid', data.vendor_bills.paid_count, 'var(--color-success)', 'PAID'],
+                  ['Draft', data.vendor_bills.draft_count, 'var(--color-ink-3)', 'DRAFT'],
                 ]}
+                onRowClick={(filter) => setDetailView({ kind: 'vendor_bills', filter })}
               />
             </div>
           )}
@@ -269,16 +326,96 @@ export function DashboardPage() {
           Everything's hidden — use Customize above to bring sections back.
         </div>
       )}
+
+      {detailView && (detailView.kind === 'customer_invoices' || detailView.kind === 'vendor_bills') && (
+        <DashboardDetailModal<Document>
+          title={detailView.kind === 'customer_invoices' ? 'Customer Invoices' : 'Vendor Bills'}
+          subtitle={
+            detailView.filter
+              ? `Showing ${PAYMENT_FILTER_LABEL[detailView.filter]} ${detailView.kind === 'customer_invoices' ? 'invoices' : 'bills'}`
+              : 'Unpaid and partially paid, most recently updated first'
+          }
+          queryKey={`${detailView.kind}-${detailView.filter ?? 'all'}`}
+          fetcher={async () => {
+            const list = detailView.kind === 'customer_invoices' ? listCustomerInvoices : listVendorBills
+            const page = await list({
+              page: 1, page_size: 50, sort: '-updated_at',
+              status: detailView.filter === 'DRAFT' ? 'DRAFT' : 'POSTED',
+            })
+            if (detailView.filter === null) return page.items.filter((d) => d.balance?.payment_status !== 'PAID')
+            if (detailView.filter === 'DRAFT') return page.items
+            return page.items.filter((d) => d.balance?.payment_status === detailView.filter)
+          }}
+          columns={DOC_COLUMNS}
+          rowKey={(d) => d.id}
+          onRowClick={(d) => {
+            setDetailView(null)
+            navigate(documentPath(d.doc_type, d.id))
+          }}
+          emptyMessage="Nothing matches this status right now."
+          onClose={() => setDetailView(null)}
+        />
+      )}
+
+      {detailView && (detailView.kind === 'sales_orders' || detailView.kind === 'purchase_orders') && (
+        <DashboardDetailModal<Document>
+          title={detailView.kind === 'sales_orders' ? 'Sales Orders' : 'Purchase Orders'}
+          subtitle="Most recently updated first"
+          queryKey={detailView.kind}
+          fetcher={async () => {
+            const list = detailView.kind === 'sales_orders' ? listSalesOrders : listPurchaseOrders
+            const page = await list({ page: 1, page_size: 50, sort: '-updated_at' })
+            return page.items
+          }}
+          columns={DOC_COLUMNS}
+          rowKey={(d) => d.id}
+          onRowClick={(d) => {
+            setDetailView(null)
+            navigate(documentPath(d.doc_type, d.id))
+          }}
+          onClose={() => setDetailView(null)}
+        />
+      )}
+
+      {detailView && detailView.kind === 'budgets' && (
+        <DashboardDetailModal<Budget>
+          title="Active Budgets"
+          subtitle="Confirmed budgets, most recently updated first"
+          queryKey="budgets"
+          fetcher={async () => {
+            const page = await listBudgets({ page: 1, page_size: 50, sort: '-updated_at', status: 'CONFIRMED' })
+            return page.items
+          }}
+          columns={BUDGET_COLUMNS}
+          rowKey={(b) => b.id}
+          onRowClick={(b) => {
+            setDetailView(null)
+            navigate(`/budgets/${b.id}`)
+          }}
+          emptyMessage="No confirmed budgets yet."
+          onClose={() => setDetailView(null)}
+        />
+      )}
     </div>
   )
 }
 
-function StatusBreakdown({ rows }: { rows: [string, number, string][] }) {
+function StatusBreakdown({
+  rows,
+  onRowClick,
+}: {
+  rows: [string, number, string, PaymentFilter][]
+  onRowClick?: (filter: PaymentFilter) => void
+}) {
   const max = Math.max(1, ...rows.map((r) => r[1]))
   return (
     <div className="flex flex-col gap-2.5">
-      {rows.map(([label, count, color]) => (
-        <div key={label} className="flex items-center gap-3">
+      {rows.map(([label, count, color, filter]) => (
+        <div
+          key={label}
+          onClick={onRowClick ? () => onRowClick(filter) : undefined}
+          className={`flex items-center gap-3 rounded-md ${onRowClick ? 'cursor-pointer hover:bg-[var(--color-paper-2)]' : ''}`}
+        >
           <span className="w-28 shrink-0 text-xs text-[var(--color-ink-2)]">{label}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-rule)]">
             <div className="h-full rounded-full" style={{ width: `${(count / max) * 100}%`, backgroundColor: color }} />

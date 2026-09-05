@@ -37,17 +37,19 @@ _BUDGET_LINES_SQL = """
     ORDER BY aa.name
 """
 
-_DRILL_DOWN_SQL = """
-    SELECT DISTINCT d.id, d.doc_type, d.doc_number, d.doc_date,
-           c.name AS partner_name, d.total_amount
+_TRACE_SQL_BASE = """
+    SELECT jel.id AS line_id, je.id AS entry_id, je.entry_number, je.entry_date,
+           je.source_type, je.reference AS entry_reference,
+           d.id AS document_id, d.doc_type, d.doc_number, d.total_amount,
+           COALESCE(c.name, pc.name) AS partner_name,
+           jel.debit, jel.credit, jel.label
     FROM journal_entry_line jel
     JOIN journal_entry je ON je.id = jel.journal_entry_id
-    JOIN document d ON d.id = je.source_document_id
-    JOIN contact c ON c.id = d.partner_id
+    LEFT JOIN document d ON d.id = je.source_document_id
+    LEFT JOIN contact c ON c.id = d.partner_id
+    LEFT JOIN contact pc ON pc.id = jel.partner_id
     WHERE jel.analytic_account_id = :analytic_id
       AND je.status = 'POSTED'
-      AND je.entry_date BETWEEN :start_date AND :end_date
-    ORDER BY d.doc_date DESC
 """
 
 
@@ -70,8 +72,25 @@ def compute_achieved_by_analytic(db: Session, budget_id: int) -> dict[int, dict]
     return result
 
 
-def build_drill_down(db: Session, analytic_id: int, start_date: date, end_date: date) -> list[dict]:
-    rows = db.execute(
-        text(_DRILL_DOWN_SQL), {"analytic_id": analytic_id, "start_date": start_date, "end_date": end_date}
-    ).mappings().all()
+def build_drill_down(
+    db: Session, analytic_id: int, start_date: date | None = None, end_date: date | None = None
+) -> list[dict]:
+    """Every posted journal line tagged with this analytic, newest first -
+    a Bill/Invoice/PO/SO-sourced line carries its document's number and
+    partner; a manual entry (no source document) falls back to the line's
+    own partner/label so it's traceable too, not silently dropped. Date
+    bounds are optional: the Budget drill-down passes the budget's own
+    period, the Analytic Account page's own "what's under this account"
+    view passes none, for its whole history."""
+    sql = _TRACE_SQL_BASE
+    params: dict = {"analytic_id": analytic_id}
+    if start_date is not None:
+        sql += " AND je.entry_date >= :start_date"
+        params["start_date"] = start_date
+    if end_date is not None:
+        sql += " AND je.entry_date <= :end_date"
+        params["end_date"] = end_date
+    sql += " ORDER BY je.entry_date DESC, je.id DESC"
+
+    rows = db.execute(text(sql), params).mappings().all()
     return [dict(r) for r in rows]

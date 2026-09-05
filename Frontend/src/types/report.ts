@@ -40,10 +40,18 @@ export interface ProfitLoss {
 export type DrillDownDocType = 'PURCHASE_ORDER' | 'VENDOR_BILL' | 'SALES_ORDER' | 'CUSTOMER_INVOICE'
 
 export interface BudgetDrillDownItem {
-  id: number
-  doc_type: DrillDownDocType
-  doc_number: string
-  doc_date: string
-  partner_name: string
-  total_amount: string
+  line_id: number
+  entry_id: number
+  entry_number: string
+  entry_date: string
+  source_type: string
+  entry_reference: string | null
+  document_id: number | null
+  doc_type: DrillDownDocType | null
+  doc_number: string | null
+  partner_name: string | null
+  total_amount: string | null
+  debit: string
+  credit: string
+  label: string | null
 }

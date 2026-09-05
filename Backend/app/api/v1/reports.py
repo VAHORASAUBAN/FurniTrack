@@ -57,7 +57,11 @@ def get_profit_loss_pdf(db: DbSession, date_from: date = Query(...), date_to: da
 def get_budget_drill_down(
     db: DbSession,
     analytic_id: int = Query(...),
-    date_from: date = Query(...),
-    date_to: date = Query(...),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
 ):
+    """Date bounds are optional: the Budget screen's drill-down passes the
+    budget's own period; the Analytic Account page's own traceability view
+    (design doc follow-up: "which transactions are tracked under this
+    account") calls the same endpoint with none, for all-time activity."""
     return budget_report.build_drill_down(db, analytic_id, date_from, date_to)

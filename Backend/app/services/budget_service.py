@@ -7,6 +7,7 @@ from app.core.exceptions import ConflictError
 from app.models import Budget, BudgetLine
 from app.models.enums import BudgetStatus
 from app.reports.budget_report import compute_achieved_by_analytic
+from app.services import notification_service
 
 
 def _build_lines(line_inputs: list[dict]) -> list[BudgetLine]:
@@ -56,6 +57,7 @@ def confirm_budget(db: Session, budget: Budget) -> Budget:
         raise ConflictError("Only a draft budget can be confirmed.", code="NOT_DRAFT")
     budget.status = BudgetStatus.CONFIRMED
     db.flush()
+    notification_service.notify(db, f"Budget \"{budget.name}\" was confirmed.", link=f"/budgets/{budget.id}")
     return budget
 
 

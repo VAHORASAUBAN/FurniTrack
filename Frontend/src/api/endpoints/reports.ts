@@ -15,8 +15,8 @@ export async function getProfitLoss(dateFrom: string, dateTo: string): Promise<P
 
 export async function getBudgetDrillDown(
   analyticId: number,
-  dateFrom: string,
-  dateTo: string
+  dateFrom?: string,
+  dateTo?: string
 ): Promise<BudgetDrillDownItem[]> {
   const resp = await apiClient.get<BudgetDrillDownItem[]>('/reports/budget/drill-down', {
     params: { analytic_id: analyticId, date_from: dateFrom, date_to: dateTo },

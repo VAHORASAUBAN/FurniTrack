@@ -87,12 +87,22 @@ class DashboardSummaryOut(BaseModel):
 
 
 class BudgetDrillDownItem(BaseModel):
-    """One posted document behind a budget line's Achieved figure — design
-    doc §4.3/§8.4: clicking Achieved opens the list of source documents."""
+    """One posted journal line behind an analytic account's Achieved figure
+    (design doc §4.3/§8.4) or its all-time activity — clicking either opens
+    this trace. A Bill/Invoice/PO/SO-sourced line carries its document;
+    a manual entry has none, and falls back to the line's own label."""
 
-    id: int
-    doc_type: DocType
-    doc_number: str
-    doc_date: date
-    partner_name: str
-    total_amount: Money
+    line_id: int
+    entry_id: int
+    entry_number: str
+    entry_date: date
+    source_type: str
+    entry_reference: str | None
+    document_id: int | None
+    doc_type: DocType | None
+    doc_number: str | None
+    partner_name: str | None
+    total_amount: Money | None
+    debit: Money
+    credit: Money
+    label: str | None

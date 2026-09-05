@@ -11,6 +11,7 @@ from app.accounting import engine, resolver
 from app.core.exceptions import ConflictError
 from app.models import JournalEntry, JournalEntryLine
 from app.models.enums import JournalEntrySourceType, JournalEntryStatus
+from app.services import notification_service
 
 
 def create_draft(db: Session, data: dict) -> JournalEntry:
@@ -54,14 +55,28 @@ def update_draft(db: Session, entry: JournalEntry, data: dict) -> JournalEntry:
 
 def post(db: Session, entry: JournalEntry, *, posted_by_user_id: int) -> JournalEntry:
     settings = resolver.get_company_settings(db)
-    return engine.validate_and_post(db, entry, settings, posted_by_user_id=posted_by_user_id)
+    posted = engine.validate_and_post(db, entry, settings, posted_by_user_id=posted_by_user_id)
+    notification_service.notify(
+        db,
+        f"Journal entry {posted.entry_number} was posted for {posted.total_debit:,.2f}.",
+        link=f"/journal-entries/{posted.id}",
+        actor_user_id=posted_by_user_id,
+    )
+    return posted
 
 
 def cancel(db: Session, entry: JournalEntry, *, cancelled_by_user_id: int) -> JournalEntry:
     """Reversal, not deletion (design doc §3.5) — the original stays in
     history as CANCELLED and a new POSTED entry undoes its ledger effect."""
     settings = resolver.get_company_settings(db)
-    return engine.reverse_entry(db, entry, settings, reversed_by_user_id=cancelled_by_user_id)
+    reversal = engine.reverse_entry(db, entry, settings, reversed_by_user_id=cancelled_by_user_id)
+    notification_service.notify(
+        db,
+        f"Journal entry {entry.entry_number} was cancelled (reversed by {reversal.entry_number}).",
+        link=f"/journal-entries/{reversal.id}",
+        actor_user_id=cancelled_by_user_id,
+    )
+    return reversal
 
 
 def reset_to_draft(db: Session, entry: JournalEntry) -> JournalEntry:

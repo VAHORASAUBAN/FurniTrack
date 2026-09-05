@@ -27,6 +27,7 @@ import { ProductListPage } from './features/products/ProductListPage'
 import { PurchaseOrderFormPage } from './features/purchase/PurchaseOrderFormPage'
 import { PurchaseOrderListPage } from './features/purchase/PurchaseOrderListPage'
 import { BalanceSheetPage } from './features/reports/BalanceSheetPage'
+import { BudgetReportPage } from './features/reports/BudgetReportPage'
 import { ProfitLossPage } from './features/reports/ProfitLossPage'
 import { VendorBillFormPage } from './features/purchase/VendorBillFormPage'
 import { VendorBillListPage } from './features/purchase/VendorBillListPage'
@@ -104,7 +105,7 @@ function App() {
 
             <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
             <Route path="/reports/profit-loss" element={<ProfitLossPage />} />
-            <Route path="/reports/budget" element={<Navigate to="/budgets" replace />} />
+            <Route path="/reports/budget" element={<BudgetReportPage />} />
 
             <Route element={<RequireRole allow={['ADMIN']} />}>
               <Route path="/settings/users" element={<UserListPage />} />

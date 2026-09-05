@@ -12,6 +12,7 @@ from app.api.v1 import (
     dashboard,
     journal_entries,
     journals,
+    notifications,
     payments,
     portal,
     products,
@@ -38,3 +39,4 @@ api_router.include_router(portal.router)
 api_router.include_router(budgets.router)
 api_router.include_router(reports.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(notifications.router)

@@ -15,6 +15,7 @@ import {
 import { FormShell } from '../../components/shared/FormShell'
 import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
+import { BudgetDrillDownModal } from '../budgets/BudgetDrillDownModal'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(128),
@@ -31,6 +32,7 @@ export function AnalyticAccountFormPage() {
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [showTransactions, setShowTransactions] = useState(false)
 
   const { data: analytic, isLoading } = useQuery({
     queryKey: ['analytic-accounts', analyticId],
@@ -92,6 +94,9 @@ export function AnalyticAccountFormPage() {
       status={!isNew && analytic ? (analytic.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
       onBack={goBack}
       actions={[
+        ...(!isNew
+          ? [{ label: 'View Transactions', onClick: () => setShowTransactions(true), variant: 'secondary' as const }]
+          : []),
         ...(canArchive
           ? [
               {
@@ -124,6 +129,14 @@ export function AnalyticAccountFormPage() {
           </select>
         </div>
       </div>
+
+      {showTransactions && analytic && (
+        <BudgetDrillDownModal
+          analyticId={analytic.id}
+          analyticName={analytic.name}
+          onClose={() => setShowTransactions(false)}
+        />
+      )}
 
       {serverError && (
         <div className="mt-4 rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger)]">

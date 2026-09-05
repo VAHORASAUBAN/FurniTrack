@@ -11,6 +11,7 @@ from app.models.contact import Contact
 from app.models.document import Document, DocumentLine
 from app.models.journal import Journal
 from app.models.journal_entry import JournalEntry, JournalEntryLine
+from app.models.notification import Notification
 from app.models.payment import Payment, PaymentAllocation
 from app.models.product import Product, ProductCategory
 from app.models.sequence import CompanySetting, DocSequence
@@ -28,6 +29,7 @@ __all__ = [
     "Journal",
     "JournalEntry",
     "JournalEntryLine",
+    "Notification",
     "Payment",
     "PaymentAllocation",
     "Product",
