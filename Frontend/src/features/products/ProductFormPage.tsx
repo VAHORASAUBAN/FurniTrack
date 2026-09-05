@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { accountOptions } from '../../api/endpoints/accounts'
-import { getApiErrorMessage } from '../../api/client'
+import { API_ORIGIN, getApiErrorMessage } from '../../api/client'
 import {
   archiveProduct,
   createProduct,
@@ -21,6 +21,7 @@ import { ImageUploadField } from '../../components/shared/ImageUploadField'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
 import { useGoBack } from '../../hooks/useGoBack'
+import { useObjectUrl } from '../../hooks/useObjectUrl'
 import { useAuthStore } from '../../stores/authStore'
 
 const moneyString = z
@@ -50,6 +51,9 @@ export function ProductFormPage() {
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const pendingImagePreview = useObjectUrl(pendingImageFile)
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['products', productId],
@@ -82,7 +86,15 @@ export function ProductFormPage() {
 
   const createMutation = useMutation({
     mutationFn: createProduct,
-    onSuccess: (p) => {
+    onSuccess: async (p) => {
+      if (pendingImageFile) {
+        try {
+          await uploadProductImage(p.id, pendingImageFile)
+        } catch {
+          // the axios interceptor already toasts the failure - the product
+          // itself still saved fine, so don't block navigation on this
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['products'] })
       navigate(`/products/${p.id}`, { replace: true })
     },
@@ -110,6 +122,20 @@ export function ProductFormPage() {
   function onSubmit(values: FormValues) {
     setServerError(null)
     isNew ? createMutation.mutate(values) : updateMutation.mutate(values)
+  }
+
+  async function handleImageSelected(file: File) {
+    if (isNew) {
+      setPendingImageFile(file)
+      return
+    }
+    setIsUploadingImage(true)
+    try {
+      await uploadProductImage(productId as number, file)
+      queryClient.invalidateQueries({ queryKey: ['products', productId] })
+    } finally {
+      setIsUploadingImage(false)
+    }
   }
 
   if (!isNew && isLoading) return <div className="py-12 text-center text-[var(--color-ink-3)]">Loading…</div>
@@ -140,16 +166,15 @@ export function ProductFormPage() {
         { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
       ]}
     >
-      {!isNew && (
-        <div className="mb-5">
-          <ImageUploadField
-            imageUrl={product?.image_url ?? null}
-            label="Photo"
-            onUpload={(file) => uploadProductImage(productId as number, file)}
-            onUploaded={() => queryClient.invalidateQueries({ queryKey: ['products', productId] })}
-          />
-        </div>
-      )}
+      <div className="mb-5">
+        <ImageUploadField
+          previewUrl={pendingImagePreview ?? (product?.image_url ? `${API_ORIGIN}${product.image_url}` : null)}
+          label="Photo"
+          isUploading={isUploadingImage}
+          helperText={isNew && pendingImageFile ? 'Will upload once you save' : undefined}
+          onFileSelected={handleImageSelected}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
         <div>

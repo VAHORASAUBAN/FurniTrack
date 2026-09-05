@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
-import { getApiErrorMessage } from '../../api/client'
+import { API_ORIGIN, getApiErrorMessage } from '../../api/client'
 import {
   archiveContact,
   createContact,
@@ -16,6 +16,7 @@ import {
 import { FormShell } from '../../components/shared/FormShell'
 import { ImageUploadField } from '../../components/shared/ImageUploadField'
 import { useGoBack } from '../../hooks/useGoBack'
+import { useObjectUrl } from '../../hooks/useObjectUrl'
 import { useAuthStore } from '../../stores/authStore'
 import type { PortalCredentials } from '../../types/contact'
 
@@ -43,6 +44,9 @@ export function ContactFormPage() {
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
   const [issuedCredentials, setIssuedCredentials] = useState<PortalCredentials | null>(null)
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const pendingImagePreview = useObjectUrl(pendingImageFile)
 
   const { data: contact, isLoading } = useQuery({
     queryKey: ['contacts', contactId],
@@ -75,7 +79,15 @@ export function ContactFormPage() {
 
   const createMutation = useMutation({
     mutationFn: createContact,
-    onSuccess: (resp) => {
+    onSuccess: async (resp) => {
+      if (pendingImageFile) {
+        try {
+          await uploadContactImage(resp.contact.id, pendingImageFile)
+        } catch {
+          // the axios interceptor already toasts the failure - the contact
+          // itself still saved fine, so don't block navigation on this
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['contacts'] })
       if (resp.portal_credentials) {
         setIssuedCredentials(resp.portal_credentials)
@@ -112,6 +124,22 @@ export function ContactFormPage() {
     } else {
       const { create_portal_user: _unused, ...rest } = cleaned
       updateMutation.mutate(rest)
+    }
+  }
+
+  async function handleImageSelected(file: File) {
+    // A new contact has no id for the upload endpoint to target yet - hold
+    // the file and send it right after createMutation succeeds instead.
+    if (isNew) {
+      setPendingImageFile(file)
+      return
+    }
+    setIsUploadingImage(true)
+    try {
+      await uploadContactImage(contactId as number, file)
+      queryClient.invalidateQueries({ queryKey: ['contacts', contactId] })
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -166,17 +194,16 @@ export function ContactFormPage() {
         </div>
       )}
 
-      {!isNew && (
-        <div className="mb-5">
-          <ImageUploadField
-            imageUrl={contact?.profile_image_url ?? null}
-            label="Photo"
-            shape="circle"
-            onUpload={(file) => uploadContactImage(contactId as number, file)}
-            onUploaded={() => queryClient.invalidateQueries({ queryKey: ['contacts', contactId] })}
-          />
-        </div>
-      )}
+      <div className="mb-5">
+        <ImageUploadField
+          previewUrl={pendingImagePreview ?? (contact?.profile_image_url ? `${API_ORIGIN}${contact.profile_image_url}` : null)}
+          label="Photo"
+          shape="circle"
+          isUploading={isUploadingImage}
+          helperText={isNew && pendingImageFile ? 'Will upload once you save' : undefined}
+          onFileSelected={handleImageSelected}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
         <Field label="Contact Name" error={errors.name?.message}>

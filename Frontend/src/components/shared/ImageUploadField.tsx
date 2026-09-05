@@ -1,37 +1,43 @@
 import { ImagePlus, Loader2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { API_ORIGIN } from '../../api/client'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_BYTES = 2 * 1024 * 1024
 
 interface ImageUploadFieldProps {
-  imageUrl: string | null
-  /** Hits the module's own `POST .../{id}/image` endpoint - the caller
-   * owns which one, this component only owns the picker/preview/validation. */
-  onUpload: (file: File) => Promise<{ image_url?: string; profile_image_url?: string }>
-  onUploaded: (url: string) => void
+  /** Already resolved - either the real `${API_ORIGIN}${...}` URL for a
+   * saved record's photo, or a local object URL (useObjectUrl) for one
+   * just picked on a not-yet-saved record. This component doesn't care
+   * which. */
+  previewUrl: string | null
+  /** Called once a picked file passes type/size validation. On a new
+   * record (no id to upload to yet) the caller should just hold onto the
+   * file and upload it after the record is created; on an existing one it
+   * can upload immediately. */
+  onFileSelected: (file: File) => void
+  isUploading?: boolean
   disabled?: boolean
   label?: string
   shape?: 'circle' | 'square'
+  helperText?: string
 }
 
-/** Shared by Contact and Product forms - design doc §5.3's
- * `POST /contacts/{id}/image` (and its Product mirror) already existed on
- * the backend with nothing on the frontend to call it. */
+/** Shared by Contact and Product forms, for both creating a new record
+ * (nothing to upload to yet - the picked file is held until save) and
+ * editing an existing one (uploads immediately). */
 export function ImageUploadField({
-  imageUrl,
-  onUpload,
-  onUploaded,
+  previewUrl,
+  onFileSelected,
+  isUploading,
   disabled,
   label = 'Photo',
   shape = 'square',
+  helperText,
 }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isUploading, setIsUploading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
-  async function handleFile(file: File) {
+  function handleFile(file: File) {
     setLocalError(null)
     if (!ALLOWED_TYPES.includes(file.type)) {
       setLocalError('Only JPEG, PNG, or WEBP images are allowed.')
@@ -41,16 +47,7 @@ export function ImageUploadField({
       setLocalError('Image must be 2MB or smaller.')
       return
     }
-    setIsUploading(true)
-    try {
-      const result = await onUpload(file)
-      const url = result.image_url ?? result.profile_image_url
-      if (url) onUploaded(url)
-    } catch {
-      setLocalError('Upload failed — please try again.')
-    } finally {
-      setIsUploading(false)
-    }
+    onFileSelected(file)
   }
 
   const shapeClass = shape === 'circle' ? 'rounded-full' : 'rounded-lg'
@@ -61,11 +58,11 @@ export function ImageUploadField({
         type="button"
         disabled={disabled || isUploading}
         onClick={() => inputRef.current?.click()}
-        title={imageUrl ? 'Change photo' : 'Upload a photo'}
+        title={previewUrl ? 'Change photo' : 'Upload a photo'}
         className={`relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-[var(--color-rule-2)] bg-[var(--color-paper)] text-[var(--color-ink-3)] transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50 ${shapeClass}`}
       >
-        {imageUrl ? (
-          <img src={`${API_ORIGIN}${imageUrl}`} alt={label} className="h-full w-full object-cover" />
+        {previewUrl ? (
+          <img src={previewUrl} alt={label} className="h-full w-full object-cover" />
         ) : (
           <ImagePlus size={22} />
         )}
@@ -76,8 +73,10 @@ export function ImageUploadField({
         )}
       </button>
       <div>
-        <div className="text-sm font-medium text-[var(--color-ink)]">{imageUrl ? `Change ${label.toLowerCase()}` : `Upload a ${label.toLowerCase()}`}</div>
-        <div className="text-xs text-[var(--color-ink-3)]">JPEG, PNG, or WEBP · up to 2MB</div>
+        <div className="text-sm font-medium text-[var(--color-ink)]">
+          {previewUrl ? `Change ${label.toLowerCase()}` : `Upload a ${label.toLowerCase()}`}
+        </div>
+        <div className="text-xs text-[var(--color-ink-3)]">{helperText ?? 'JPEG, PNG, or WEBP · up to 2MB'}</div>
         {localError && <div className="mt-1 text-xs text-[var(--color-danger)]">{localError}</div>}
       </div>
       <input
