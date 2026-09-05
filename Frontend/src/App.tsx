@@ -1,9 +1,17 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
 import { ComingSoon } from './components/shared/ComingSoon'
+import { AccountFormPage } from './features/accounts/AccountFormPage'
+import { AccountListPage } from './features/accounts/AccountListPage'
+import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
+import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
 import { ContactListPage } from './features/contacts/ContactListPage'
+import { JournalFormPage } from './features/journals/JournalFormPage'
+import { JournalListPage } from './features/journals/JournalListPage'
+import { ProductFormPage } from './features/products/ProductFormPage'
+import { ProductListPage } from './features/products/ProductListPage'
 import { useSessionBootstrap } from './hooks/useSessionBootstrap'
 import { RequireRole } from './router/RequireRole'
 
@@ -28,11 +36,20 @@ function App() {
             <Route path="/contacts" element={<ContactListPage />} />
             <Route path="/contacts/:id" element={<ContactFormPage />} />
 
-            <Route path="/products" element={<ComingSoon title="Products" />} />
-            <Route path="/accounts" element={<ComingSoon title="Chart of Accounts" />} />
-            <Route path="/journals" element={<ComingSoon title="Journals" />} />
+            <Route path="/products" element={<ProductListPage />} />
+            <Route path="/products/:id" element={<ProductFormPage />} />
+
+            <Route path="/accounts" element={<AccountListPage />} />
+            <Route path="/accounts/:id" element={<AccountFormPage />} />
+
+            <Route path="/journals" element={<JournalListPage />} />
+            <Route path="/journals/:id" element={<JournalFormPage />} />
+
             <Route path="/journal-entries" element={<ComingSoon title="Journal Entries" />} />
-            <Route path="/analytics" element={<ComingSoon title="Analytic Accounts" />} />
+
+            <Route path="/analytics" element={<AnalyticAccountListPage />} />
+            <Route path="/analytics/:id" element={<AnalyticAccountFormPage />} />
+
             <Route path="/budgets" element={<ComingSoon title="Budgets" />} />
 
             <Route path="/purchase/orders" element={<ComingSoon title="Purchase Orders" />} />
