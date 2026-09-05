@@ -11,6 +11,7 @@ from app.api.v1 import (
     journal_entries,
     journals,
     payments,
+    portal,
     products,
     purchase,
     sales,
@@ -30,6 +31,7 @@ api_router.include_router(journal_entries.router)
 api_router.include_router(purchase.router)
 api_router.include_router(sales.router)
 api_router.include_router(payments.router)
+api_router.include_router(portal.router)
 
 # Populated incrementally as each module is built:
-# from app.api.v1 import budgets, reports, dashboard, portal
+# from app.api.v1 import budgets, reports, dashboard

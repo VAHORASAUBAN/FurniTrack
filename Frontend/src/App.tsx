@@ -7,6 +7,8 @@ import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFor
 import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { SignUpPage } from './features/auth/SignUpPage'
+import { PortalInvoiceDetailPage } from './features/portal/PortalInvoiceDetailPage'
+import { PortalInvoiceListPage } from './features/portal/PortalInvoiceListPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
 import { ContactListPage } from './features/contacts/ContactListPage'
 import { JournalEntryFormPage } from './features/journalEntries/JournalEntryFormPage'
@@ -91,7 +93,11 @@ function App() {
         </Route>
 
         <Route element={<RequireRole allow={['PORTAL']} />}>
-          <Route path="/portal" element={<ComingSoon title="Portal Dashboard" />} />
+          <Route element={<AppShell />}>
+            <Route path="/portal" element={<Navigate to="/portal/invoices" replace />} />
+            <Route path="/portal/invoices" element={<PortalInvoiceListPage />} />
+            <Route path="/portal/invoices/:id" element={<PortalInvoiceDetailPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
