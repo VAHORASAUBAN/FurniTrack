@@ -8,6 +8,8 @@ import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountLis
 import { LoginPage } from './features/auth/LoginPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
 import { ContactListPage } from './features/contacts/ContactListPage'
+import { JournalEntryFormPage } from './features/journalEntries/JournalEntryFormPage'
+import { JournalEntryListPage } from './features/journalEntries/JournalEntryListPage'
 import { JournalFormPage } from './features/journals/JournalFormPage'
 import { JournalListPage } from './features/journals/JournalListPage'
 import { ProductFormPage } from './features/products/ProductFormPage'
@@ -45,7 +47,8 @@ function App() {
             <Route path="/journals" element={<JournalListPage />} />
             <Route path="/journals/:id" element={<JournalFormPage />} />
 
-            <Route path="/journal-entries" element={<ComingSoon title="Journal Entries" />} />
+            <Route path="/journal-entries" element={<JournalEntryListPage />} />
+            <Route path="/journal-entries/:id" element={<JournalEntryFormPage />} />
 
             <Route path="/analytics" element={<AnalyticAccountListPage />} />
             <Route path="/analytics/:id" element={<AnalyticAccountFormPage />} />

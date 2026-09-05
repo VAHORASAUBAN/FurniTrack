@@ -1,4 +1,5 @@
 import { apiClient } from '../client'
+import type { Many2OneOption } from '../../components/shared/Many2OneSelect'
 import type { Page, ListParams } from '../../types/api'
 import type { Contact, ContactCreateResponse, ContactInput } from '../../types/contact'
 
@@ -30,4 +31,9 @@ export async function archiveContact(id: number): Promise<Contact> {
 export async function unarchiveContact(id: number): Promise<Contact> {
   const resp = await apiClient.post<Contact>(`/contacts/${id}/unarchive`)
   return resp.data
+}
+
+export async function contactOptions(search: string): Promise<Many2OneOption[]> {
+  const page = await listContacts({ search, page_size: 25 })
+  return page.items.map((c) => ({ id: c.id, label: c.name }))
 }

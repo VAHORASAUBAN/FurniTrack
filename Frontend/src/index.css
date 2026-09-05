@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "./";
+@source "../index.html";
 
 /* Design tokens — a considered neutral + one accent, not Tailwind's raw
    defaults. Ink is blue-black rather than pure black; the accent is a

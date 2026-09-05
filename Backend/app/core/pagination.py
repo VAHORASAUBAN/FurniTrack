@@ -29,21 +29,23 @@ def page_params(
     return PageParams(page=page, page_size=page_size, search=search, sort=sort, include_archived=include_archived)
 
 
+def _split_sort(spec: str) -> tuple[str, "type[asc] | type[desc]"]:
+    if spec.startswith("-"):
+        return spec[1:], desc
+    return spec, asc
+
+
 def apply_sort(query: ORMQuery, sort: str | None, model, allowed_fields: set[str], default_field: str):
-    """`sort` is `field` (asc) or `-field` (desc); silently falls back to
-    `default_field` for anything not in `allowed_fields` — an unrecognised
-    sort param should never 500 a list screen."""
-    field_name = default_field
-    direction = asc
+    """`sort` (and `default_field`) is `field` (asc) or `-field` (desc);
+    silently falls back to `default_field` for anything not in
+    `allowed_fields` — an unrecognised sort param should never 500 a list
+    screen. `allowed_fields` should list bare field names (no `-`); the
+    dash is stripped from both `sort` and `default_field` before checking."""
+    field_name, direction = _split_sort(default_field)
     if sort:
-        if sort.startswith("-"):
-            direction = desc
-            field_name = sort[1:]
-        else:
-            field_name = sort
-        if field_name not in allowed_fields:
-            field_name = default_field
-            direction = asc
+        candidate_field, candidate_direction = _split_sort(sort)
+        if candidate_field in allowed_fields:
+            field_name, direction = candidate_field, candidate_direction
     return query.order_by(direction(getattr(model, field_name)))
 
 

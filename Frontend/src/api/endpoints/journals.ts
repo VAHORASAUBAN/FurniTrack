@@ -1,4 +1,5 @@
 import { apiClient } from '../client'
+import type { Many2OneOption } from '../../components/shared/Many2OneSelect'
 import type { ListParams, Page } from '../../types/api'
 import type { Journal, JournalInput } from '../../types/journal'
 
@@ -30,4 +31,9 @@ export async function archiveJournal(id: number): Promise<Journal> {
 export async function unarchiveJournal(id: number): Promise<Journal> {
   const resp = await apiClient.post<Journal>(`/journals/${id}/unarchive`)
   return resp.data
+}
+
+export async function journalOptions(search: string): Promise<Many2OneOption[]> {
+  const page = await listJournals({ search, page_size: 25 })
+  return page.items.map((j) => ({ id: j.id, label: `${j.code} — ${j.name}` }))
 }

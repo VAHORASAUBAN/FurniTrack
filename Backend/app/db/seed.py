@@ -44,11 +44,16 @@ SEQUENCES_NO_YEAR = [
 ]
 # these DO get a fiscal-year segment allocated per year at posting time;
 # the seed just needs one row to exist for the current cycle's bootstrap.
+#
+# PAYMENT_RECEIVE and PAYMENT_SEND share ONE sequence ("PAYMENT") rather than
+# having one each: payment.payment_number carries a single table-wide UNIQUE
+# constraint regardless of direction, so two independent "PAY"-prefixed
+# counters would both mint "PAY/2026/0001" and the second payment posted
+# (whichever direction went second) would fail to insert.
 SEQUENCES_YEARED = [
     ("VENDOR_BILL",       "Bill", 4),
     ("CUSTOMER_INVOICE",  "INV",  4),
-    ("PAYMENT_RECEIVE",   "PAY",  4),
-    ("PAYMENT_SEND",      "PAY",  4),
+    ("PAYMENT",           "PAY",  4),
     ("JOURNAL_ENTRY",     "JE",   4),
 ]
 
