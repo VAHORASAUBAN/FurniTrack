@@ -3,6 +3,7 @@ from datetime import date
 
 from pydantic import BaseModel
 
+from app.models.enums import DocType
 from app.schemas.common import Money
 
 
@@ -43,3 +44,15 @@ class ProfitLossOut(BaseModel):
     total_expenses: Money
     total_other_expense: Money
     net_profit: Money
+
+
+class BudgetDrillDownItem(BaseModel):
+    """One posted document behind a budget line's Achieved figure — design
+    doc §4.3/§8.4: clicking Achieved opens the list of source documents."""
+
+    id: int
+    doc_type: DocType
+    doc_number: str
+    doc_date: date
+    partner_name: str
+    total_amount: Money

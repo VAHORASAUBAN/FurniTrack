@@ -36,3 +36,14 @@ export interface ProfitLoss {
   total_other_expense: string
   net_profit: string
 }
+
+export type DrillDownDocType = 'PURCHASE_ORDER' | 'VENDOR_BILL' | 'SALES_ORDER' | 'CUSTOMER_INVOICE'
+
+export interface BudgetDrillDownItem {
+  id: number
+  doc_type: DrillDownDocType
+  doc_number: string
+  doc_date: string
+  partner_name: string
+  total_amount: string
+}

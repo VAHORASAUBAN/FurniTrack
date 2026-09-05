@@ -81,4 +81,5 @@ def attach_achieved(db: Session, budget: Budget) -> Budget:
         line.achieved_amount = stats["achieved_amount"]
         line.achieved_pct = stats["achieved_pct"]
         line.remaining = stats["remaining"]
+        line.analytic_name = line.analytic_account.name
     return budget

@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import DbSession, require_roles
 from app.models.enums import UserRole
-from app.reports import balance_sheet, profit_loss
-from app.schemas.report import BalanceSheetOut, ProfitLossOut
+from app.reports import balance_sheet, budget_report, profit_loss
+from app.schemas.report import BalanceSheetOut, BudgetDrillDownItem, ProfitLossOut
 
 router = APIRouter(
     prefix="/reports",
@@ -26,3 +26,13 @@ def get_balance_sheet(db: DbSession, as_of: date = Query(default_factory=date.to
 @router.get("/profit-loss", response_model=ProfitLossOut)
 def get_profit_loss(db: DbSession, date_from: date = Query(...), date_to: date = Query(...)):
     return profit_loss.build_profit_loss(db, date_from, date_to)
+
+
+@router.get("/budget/drill-down", response_model=list[BudgetDrillDownItem])
+def get_budget_drill_down(
+    db: DbSession,
+    analytic_id: int = Query(...),
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+):
+    return budget_report.build_drill_down(db, analytic_id, date_from, date_to)

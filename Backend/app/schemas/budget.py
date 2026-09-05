@@ -38,6 +38,7 @@ class BudgetLineOut(BaseModel):
 
     id: int
     analytic_account_id: int
+    analytic_name: str
     analytic_type: AnalyticType
     planned_amount: Money
     achieved_amount: Money

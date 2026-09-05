@@ -14,6 +14,7 @@ import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
 import { formatMoney } from '../../lib/money'
 import { useAuthStore } from '../../stores/authStore'
+import { BudgetDrillDownModal } from './BudgetDrillDownModal'
 
 const lineSchema = z.object({
   analytic_account_id: z.number().min(1, 'Select an analytic account'),
@@ -40,6 +41,7 @@ export function BudgetFormPage() {
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [drillDownLineIndex, setDrillDownLineIndex] = useState<number | null>(null)
 
   const { data: budget, isLoading } = useQuery({
     queryKey: ['budgets', budgetId],
@@ -214,7 +216,18 @@ export function BudgetFormPage() {
                   </td>
                   {!isNew && (
                     <td className="px-3 py-2 text-right font-mono text-[var(--color-ink-2)]">
-                      {existingLine ? formatMoney(existingLine.achieved_amount) : '—'}
+                      {existingLine ? (
+                        <button
+                          type="button"
+                          onClick={() => setDrillDownLineIndex(index)}
+                          className="underline decoration-dotted underline-offset-2 hover:text-[var(--color-accent)]"
+                          title="See the posted documents behind this figure"
+                        >
+                          {formatMoney(existingLine.achieved_amount)}
+                        </button>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   )}
                   {!isNew && (
@@ -266,6 +279,16 @@ export function BudgetFormPage() {
         <div className="mt-4 rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger)]">
           {serverError}
         </div>
+      )}
+
+      {budget && drillDownLineIndex !== null && budget.lines[drillDownLineIndex] && (
+        <BudgetDrillDownModal
+          analyticId={budget.lines[drillDownLineIndex].analytic_account_id}
+          analyticName={budget.lines[drillDownLineIndex].analytic_name}
+          dateFrom={budget.start_date}
+          dateTo={budget.end_date}
+          onClose={() => setDrillDownLineIndex(null)}
+        />
       )}
     </FormShell>
   )

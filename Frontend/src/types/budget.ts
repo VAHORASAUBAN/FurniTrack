@@ -4,6 +4,7 @@ export type AnalyticType = 'INCOME' | 'EXPENSE'
 export interface BudgetLine {
   id: number
   analytic_account_id: number
+  analytic_name: string
   analytic_type: AnalyticType
   planned_amount: string
   achieved_amount: string
