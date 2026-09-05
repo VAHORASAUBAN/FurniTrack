@@ -6,6 +6,7 @@ import { getMyInvoice, payMyInvoice } from '../../api/endpoints/portal'
 import { FormShell } from '../../components/shared/FormShell'
 import { MoneyInput } from '../../components/shared/MoneyInput'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 
 /** The wireframe's "can directly pay his dues from portal" — a single
  * Confirm action, same shape as the staff PayDialog but hitting the
@@ -51,6 +52,9 @@ export function PortalInvoiceDetailPage() {
       title={invoice.doc_number}
       status={isPaid ? 'PAID' : invoice.status}
       onBack={() => navigate('/portal/invoices')}
+      actions={[
+        { label: 'Print', onClick: () => openPdf(`/portal/invoices/${invoiceId}/pdf`), variant: 'secondary' },
+      ]}
     >
       <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6 text-sm">
         <div>

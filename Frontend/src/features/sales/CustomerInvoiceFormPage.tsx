@@ -18,6 +18,7 @@ import { emptyDocumentLine, LineItemGrid } from '../../components/shared/LineIte
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { PayDialog } from '../../components/shared/PayDialog'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 import { useAuthStore } from '../../stores/authStore'
 
 const lineSchema = z.object({
@@ -134,6 +135,11 @@ export function CustomerInvoiceFormPage() {
       onClick: () => postMutation.mutate(),
       variant: 'primary' as const,
       disabled: postMutation.isPending,
+    })
+  }
+  if (!isNew) {
+    actions.push({
+      label: 'Print', onClick: () => openPdf(`/sales/invoices/${invoiceId}/pdf`), variant: 'secondary' as const,
     })
   }
   if (!isNew && status === 'POSTED' && invoice?.balance?.payment_status !== 'PAID') {

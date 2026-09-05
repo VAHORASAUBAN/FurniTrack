@@ -107,3 +107,22 @@ def test_portal_user_cannot_pay_someone_elses_invoice(client, admin_auth_header)
 def test_staff_user_cannot_hit_portal_routes(client, admin_auth_header):
     resp = client.get("/api/v1/portal/invoices", headers=admin_auth_header)
     assert resp.status_code == 403
+
+
+def test_portal_user_can_download_their_own_invoice_pdf(client, admin_auth_header):
+    contact_id, invoice = _make_customer_with_posted_invoice(client, admin_auth_header)
+    portal_header = _create_portal_login(client, admin_auth_header, contact_id)
+
+    resp = client.get(f"/api/v1/portal/invoices/{invoice['id']}/pdf", headers=portal_header)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:4] == b"%PDF"
+
+
+def test_portal_user_cannot_download_someone_elses_invoice_pdf(client, admin_auth_header):
+    own_contact_id, _ = _make_customer_with_posted_invoice(client, admin_auth_header)
+    _, other_invoice = _make_customer_with_posted_invoice(client, admin_auth_header)
+    portal_header = _create_portal_login(client, admin_auth_header, own_contact_id)
+
+    resp = client.get(f"/api/v1/portal/invoices/{other_invoice['id']}/pdf", headers=portal_header)
+    assert resp.status_code == 404

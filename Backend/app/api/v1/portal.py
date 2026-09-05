@@ -3,7 +3,9 @@
 instead), and every read/write is scoped to the caller's own contact via
 `portal_service`, never trusted to a client-supplied id."""
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 
+from app.accounting.resolver import get_company_settings
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models.enums import UserRole
@@ -11,7 +13,7 @@ from app.schemas.common import Page
 from app.schemas.document import DocumentOut
 from app.schemas.payment import PaymentOut
 from app.schemas.portal import PortalPaymentIn
-from app.services import document_service, portal_service
+from app.services import document_service, pdf_service, portal_service
 
 router = APIRouter(
     prefix="/portal",
@@ -39,4 +41,17 @@ def get_my_invoice(invoice_id: int, db: DbSession, user: CurrentUser):
 def pay_my_invoice(invoice_id: int, payload: PortalPaymentIn, db: DbSession, user: CurrentUser):
     return portal_service.pay_own_invoice(
         db, user, invoice_id, method=payload.method, amount=payload.amount, payment_date=payload.payment_date
+    )
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+def get_my_invoice_pdf(invoice_id: int, db: DbSession, user: CurrentUser):
+    document = portal_service.get_own_invoice(db, user, invoice_id)
+    document_service.attach_balance(db, document)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
     )

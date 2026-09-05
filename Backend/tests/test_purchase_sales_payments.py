@@ -263,3 +263,58 @@ def test_accountant_can_run_the_full_purchase_flow_but_not_cancel(client, admin_
 
     cancel_resp = client.post(f"/api/v1/purchase/bills/{bill['id']}/cancel", headers=accountant_header)
     assert cancel_resp.status_code == 403
+
+
+def test_vendor_bill_pdf_is_a_valid_pdf(client, admin_auth_header, vendor_id):
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+
+    resp = client.get(f"/api/v1/purchase/bills/{bill['id']}/pdf", headers=admin_auth_header)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:4] == b"%PDF"
+    assert len(resp.content) > 500
+
+
+def test_customer_invoice_pdf_is_a_valid_pdf(client, admin_auth_header, customer_id):
+    income_id = _account_id(client, admin_auth_header, "Sales")
+    invoice = client.post(
+        "/api/v1/sales/invoices",
+        json={
+            "partner_id": customer_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": income_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/sales/invoices/{invoice['id']}/post", headers=admin_auth_header)
+
+    resp = client.get(f"/api/v1/sales/invoices/{invoice['id']}/pdf", headers=admin_auth_header)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:4] == b"%PDF"
+
+
+def test_draft_document_pdf_still_renders(client, admin_auth_header, vendor_id):
+    """PDF export doesn't require POSTED - a draft still has a doc_number
+    and lines worth previewing before it's final."""
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    resp = client.get(f"/api/v1/purchase/bills/{bill['id']}/pdf", headers=admin_auth_header)
+    assert resp.status_code == 200
+    assert resp.content[:4] == b"%PDF"

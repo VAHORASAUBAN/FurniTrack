@@ -3,8 +3,10 @@ and Customer Invoice share the same `document_service` and `DocumentOut`
 shape, with the debit/credit sides flipped inside the engine's posting
 rules rather than anywhere in this router."""
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 from sqlalchemy import or_
 
+from app.accounting.resolver import get_company_settings
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.exceptions import NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
@@ -12,7 +14,7 @@ from app.models import Document
 from app.models.enums import DocType, UserRole
 from app.schemas.common import Page
 from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate
-from app.services import document_service, master_service
+from app.services import document_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["doc_number", "reference"]
 SORT_FIELDS = {"doc_number", "doc_date", "status"}
@@ -137,3 +139,16 @@ def cancel_customer_invoice(invoice_id: int, db: DbSession, user: CurrentUser):
     document = _get_document(db, invoice_id, expected_type=DocType.CUSTOMER_INVOICE)
     document = document_service.cancel_posted_document(db, document, cancelled_by_user_id=user.id)
     return document_service.attach_balance(db, document)
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+def get_customer_invoice_pdf(invoice_id: int, db: DbSession):
+    document = _get_document(db, invoice_id, expected_type=DocType.CUSTOMER_INVOICE)
+    document_service.attach_balance(db, document)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
+    )

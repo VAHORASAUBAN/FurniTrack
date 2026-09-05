@@ -3,8 +3,10 @@ one service (`document_service`) and one response shape (`DocumentOut`);
 `doc_type` is bound by which prefix the request came in on, never by the
 request body — see `document_service.create_document`'s caller here."""
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 from sqlalchemy import or_
 
+from app.accounting.resolver import get_company_settings
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.exceptions import NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
@@ -12,7 +14,7 @@ from app.models import Document
 from app.models.enums import DocType, UserRole
 from app.schemas.common import Page
 from app.schemas.document import DocumentCreate, DocumentOut, DocumentUpdate
-from app.services import document_service, master_service
+from app.services import document_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["doc_number", "reference"]
 SORT_FIELDS = {"doc_number", "doc_date", "status"}
@@ -143,3 +145,16 @@ def cancel_vendor_bill(bill_id: int, db: DbSession, user: CurrentUser):
     document = _get_document(db, bill_id, expected_type=DocType.VENDOR_BILL)
     document = document_service.cancel_posted_document(db, document, cancelled_by_user_id=user.id)
     return document_service.attach_balance(db, document)
+
+
+@router.get("/bills/{bill_id}/pdf")
+def get_vendor_bill_pdf(bill_id: int, db: DbSession):
+    document = _get_document(db, bill_id, expected_type=DocType.VENDOR_BILL)
+    document_service.attach_balance(db, document)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
+    )
