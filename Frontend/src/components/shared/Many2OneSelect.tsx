@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Check, ChevronDown, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 
 export interface Many2OneOption {
   id: number
@@ -33,12 +34,13 @@ export function Many2OneSelect({
 }: Many2OneSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { data: options = [], isFetching } = useQuery({
-    queryKey: [queryKey, 'm2o', search],
-    queryFn: () => fetchOptions(search),
+    queryKey: [queryKey, 'm2o', debouncedSearch],
+    queryFn: () => fetchOptions(debouncedSearch),
     enabled: open,
   })
 

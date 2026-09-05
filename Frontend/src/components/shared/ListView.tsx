@@ -13,9 +13,10 @@ import {
   Printer,
   Search,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../../api/client'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { toast } from '../../stores/toastStore'
 import type { ListParams, Page } from '../../types/api'
 
@@ -120,7 +121,20 @@ export function ListView<T>({
   const [searchParams, setSearchParams] = useSearchParams()
   const [isExporting, setIsExporting] = useState(false)
 
+  // The URL only commits a search once typing pauses (see the debounce
+  // effect below) - `search` (what actually drives the query) reads from
+  // the URL, while the input itself is bound to `searchInput` so keystrokes
+  // stay instant instead of waiting on the debounce too.
   const search = searchParams.get('q') ?? ''
+  const [searchInput, setSearchInput] = useState(search)
+  const debouncedSearchInput = useDebouncedValue(searchInput, 400)
+  useEffect(() => {
+    if (debouncedSearchInput !== search) {
+      updateParams({ q: debouncedSearchInput || null, page: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchInput])
+
   const sort = searchParams.get('sort') ?? undefined
   const status = searchParams.get('status') ?? ''
   const dateFrom = searchParams.get('date_from') ?? ''
@@ -163,6 +177,7 @@ export function ListView<T>({
   })
 
   function clearFilters() {
+    setSearchInput('')
     updateParams({ q: null, status: null, date_from: null, date_to: null, archived: null, page: null })
   }
 
@@ -223,8 +238,8 @@ export function ListView<T>({
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-3)]" />
           <input
-            value={search}
-            onChange={(e) => updateParams({ q: e.target.value, page: null })}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder={searchPlaceholder}
             className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           />
