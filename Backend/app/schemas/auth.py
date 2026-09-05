@@ -39,6 +39,26 @@ class LogoutRequest(BaseModel):
     refresh_token: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+    new_password_confirm: str
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.new_password != self.new_password_confirm:
+            raise ValueError("Passwords do not match.")
+        return self
+
+
+class MessageOut(BaseModel):
+    message: str
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

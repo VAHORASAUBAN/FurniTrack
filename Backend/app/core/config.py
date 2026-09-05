@@ -20,9 +20,14 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:5173"
+
+    # --- Frontend (for building links this backend has no way to render itself,
+    # e.g. the password reset link printed to the console — see auth.py) ---
+    FRONTEND_URL: str = "http://localhost:5173"
 
     # --- App ---
     ENVIRONMENT: str = "development"

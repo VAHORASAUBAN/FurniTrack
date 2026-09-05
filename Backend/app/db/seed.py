@@ -58,7 +58,12 @@ SEQUENCES_YEARED = [
 ]
 
 ADMIN_LOGIN_ID = "admin"
-ADMIN_EMAIL = "admin@urbanfurniture.local"
+# NOT "@...local" - EmailStr/email-validator treats .local as a reserved,
+# special-use TLD and rejects it wherever an email is validated as a
+# request field (e.g. forgot-password), even though nothing stopped it
+# landing here since this row is inserted straight via the ORM, bypassing
+# Pydantic entirely.
+ADMIN_EMAIL = "admin@urbanfurniture.in"
 ADMIN_PASSWORD = "Admin@12345"  # dev-only default; change after first login
 
 

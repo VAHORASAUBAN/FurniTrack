@@ -11,15 +11,16 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.exceptions import AppError, ConflictError, UnauthorizedError
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
+    generate_reset_token,
     hash_password,
     hash_refresh_token,
     verify_password,
 )
-from app.models import RefreshToken, User
+from app.models import PasswordResetToken, RefreshToken, User
 from app.models.enums import UserRole
 from app.schemas.auth import LoginRequest, SignupRequest
 
@@ -130,3 +131,50 @@ def logout(db: Session, raw_refresh_token: str) -> None:
     # Revoke the whole family: logging out ends this session everywhere it
     # was rotated to, not just the one token presented.
     db.query(RefreshToken).filter_by(family_id=token_row.family_id).update({"is_revoked": True})
+
+
+def forgot_password(db: Session, email: str) -> str | None:
+    """Always safe to call regardless of whether `email` is registered — the
+    router returns the same generic message either way (design doc §5.2: no
+    account enumeration). Returns the raw token only so the caller can act on
+    it (the router logs a reset link to the console in place of an email
+    service; a test can use it directly) — it is never put in the HTTP
+    response."""
+    user = db.query(User).filter_by(email=email, is_active=True).one_or_none()
+    if user is None:
+        return None
+
+    raw_token, token_hash = generate_reset_token()
+    db.add(
+        PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES),
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    db.flush()
+    return raw_token
+
+
+def reset_password(db: Session, raw_token: str, new_password: str) -> None:
+    token_hash = hash_refresh_token(raw_token)  # generic opaque-token hash, not refresh-specific
+    token_row = db.query(PasswordResetToken).filter_by(token_hash=token_hash).one_or_none()
+
+    invalid = AppError("This password reset link is invalid or has expired.", code="INVALID_RESET_TOKEN")
+    if token_row is None or token_row.used_at is not None:
+        raise invalid
+    if token_row.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise invalid
+
+    user = db.get(User, token_row.user_id)
+    if user is None or not user.is_active:
+        raise invalid
+
+    user.password_hash = hash_password(new_password)
+    token_row.used_at = datetime.now(timezone.utc)
+    # A reset means "this account may have been compromised" — kill every
+    # existing session, not just rotate one, same reasoning as the reuse-
+    # detection revocation above.
+    db.query(RefreshToken).filter_by(user_id=user.id).update({"is_revoked": True})
+    db.flush()

@@ -1,19 +1,24 @@
 """Auth router — design doc §5.2.
 
-forgot-password / reset-password are deliberately NOT implemented yet: they
-are explicit nice-to-have (build plan §10.2, item 4) and need either SMTP
-config or a new reset-token table, neither of which exists yet. The five
-endpoints here (signup/login/refresh/logout/me) are must-have — everything
-else in the system depends on auth working first.
+forgot-password / reset-password have no SMTP service to send an actual
+email through, so in place of one the backend prints the reset link to its
+own console — this user already runs the server from a terminal to read
+logs, so that's where the "email" shows up. The HTTP response never reveals
+whether the address was registered (no account enumeration) or leaks the
+token; only the console line does.
 """
 from fastapi import APIRouter, status
 
+from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession
 from app.schemas.auth import (
     AccessTokenResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
+    MessageOut,
     RefreshRequest,
+    ResetPasswordRequest,
     SignupRequest,
     TokenResponse,
     UserOut,
@@ -21,6 +26,8 @@ from app.schemas.auth import (
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_GENERIC_FORGOT_PASSWORD_MESSAGE = "If that email is registered, password reset instructions have been sent."
 
 
 @router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -49,3 +56,19 @@ def logout(payload: LogoutRequest, db: DbSession):
 @router.get("/me", response_model=UserOut)
 def me(user: CurrentUser):
     return user
+
+
+@router.post("/forgot-password", response_model=MessageOut, status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
+    raw_token = auth_service.forgot_password(db, payload.email)
+    if raw_token is not None:
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        print(f"\n{'=' * 72}\nPASSWORD RESET (no SMTP configured — this stands in for the email)\n"
+              f"  To: {payload.email}\n  Link: {reset_link}\n"
+              f"  Expires in {settings.RESET_TOKEN_EXPIRE_MINUTES} minutes.\n{'=' * 72}\n")
+    return MessageOut(message=_GENERIC_FORGOT_PASSWORD_MESSAGE)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(payload: ResetPasswordRequest, db: DbSession):
+    auth_service.reset_password(db, payload.token, payload.new_password)

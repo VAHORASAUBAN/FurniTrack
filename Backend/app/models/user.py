@@ -50,3 +50,18 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+
+
+class PasswordResetToken(Base):
+    """Opaque, SHA-256-hashed reset tokens — same at-rest pattern as
+    RefreshToken (design doc §9.3). One-time use: `used_at` is stamped on
+    a successful reset so a captured link can't be replayed."""
+
+    __tablename__ = "password_reset_token"
+
+    id: Mapped[int] = mapped_column(UBigInt, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(UBigInt, ForeignKey("user.id"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

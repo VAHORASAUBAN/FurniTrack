@@ -14,7 +14,7 @@ from app.models.journal_entry import JournalEntry, JournalEntryLine
 from app.models.payment import Payment, PaymentAllocation
 from app.models.product import Product, ProductCategory
 from app.models.sequence import CompanySetting, DocSequence
-from app.models.user import RefreshToken, User
+from app.models.user import PasswordResetToken, RefreshToken, User
 
 __all__ = [
     "Base",
@@ -34,6 +34,7 @@ __all__ = [
     "ProductCategory",
     "CompanySetting",
     "DocSequence",
+    "PasswordResetToken",
     "RefreshToken",
     "User",
 ]

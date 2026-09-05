@@ -5,7 +5,9 @@ import { AccountFormPage } from './features/accounts/AccountFormPage'
 import { AccountListPage } from './features/accounts/AccountListPage'
 import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
 import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignUpPage } from './features/auth/SignUpPage'
 import { BudgetFormPage } from './features/budgets/BudgetFormPage'
 import { BudgetListPage } from './features/budgets/BudgetListPage'
@@ -48,6 +50,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route element={<RequireRole allow={[...STAFF]} />}>
           <Route element={<AppShell />}>

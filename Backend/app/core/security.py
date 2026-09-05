@@ -57,5 +57,13 @@ def hash_refresh_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
+def generate_reset_token() -> tuple[str, str]:
+    """Same opaque-token-hashed-at-rest pattern as generate_refresh_token,
+    for PasswordResetToken. Reuses hash_refresh_token since the hashing
+    itself isn't refresh-token-specific — it's just "sha256 an opaque token"."""
+    raw = secrets.token_urlsafe(32)
+    return raw, hash_refresh_token(raw)
+
+
 class TokenError(Exception):
     """Raised for any invalid/expired/reused token — routers map this to 401."""

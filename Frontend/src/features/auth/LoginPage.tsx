@@ -18,11 +18,12 @@ type FormValues = z.infer<typeof schema>
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const justSignedUp = Boolean((location.state as { justSignedUp?: boolean } | null)?.justSignedUp)
+  const locationState = location.state as { justSignedUp?: boolean; passwordWasReset?: boolean } | null
+  const justSignedUp = Boolean(locationState?.justSignedUp)
+  const passwordWasReset = Boolean(locationState?.passwordWasReset)
   const setSession = useAuthStore((s) => s.setSession)
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [showForgotNote, setShowForgotNote] = useState(false)
 
   const {
     register,
@@ -70,6 +71,11 @@ export function LoginPage() {
               Account created — sign in below.
             </div>
           )}
+          {passwordWasReset && (
+            <div className="mt-5 rounded-md bg-[var(--color-success-bg)] px-3 py-2 text-sm text-[var(--color-success)]">
+              Password updated — sign in with your new password.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-7 flex flex-col gap-4">
             <div>
@@ -85,13 +91,12 @@ export function LoginPage() {
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="block text-sm font-medium text-[var(--color-ink)]">Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotNote((v) => !v)}
+                <Link
+                  to="/forgot-password"
                   className="text-xs font-medium text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
               <input
                 type="password"
@@ -99,11 +104,6 @@ export function LoginPage() {
                 className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent-bg)]"
               />
               {errors.password && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.password.message}</p>}
-              {showForgotNote && (
-                <p className="mt-1.5 text-xs text-[var(--color-ink-3)]">
-                  Password reset isn't available yet — contact your Admin to reset it.
-                </p>
-              )}
             </div>
 
             {serverError && (

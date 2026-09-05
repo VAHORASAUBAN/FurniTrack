@@ -8,7 +8,8 @@ import uuid
 import pytest
 
 from app.db.session import SessionLocal
-from app.models import RefreshToken, User
+from app.models import PasswordResetToken, RefreshToken, User
+from app.services import auth_service
 
 
 @pytest.fixture()
@@ -31,6 +32,7 @@ def new_accountant(client):
     db = SessionLocal()
     try:
         db.query(RefreshToken).filter_by(user_id=user_id).delete()
+        db.query(PasswordResetToken).filter_by(user_id=user_id).delete()
         db.query(User).filter_by(id=user_id).delete()
         db.commit()
     finally:
@@ -151,7 +153,99 @@ def test_logout_is_idempotent(client, new_accountant):
     assert client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token}).status_code == 204
 
 
+def test_forgot_password_returns_identical_202_for_real_and_unknown_email(client, new_accountant):
+    """§5.2: the HTTP response must not reveal whether the address is
+    registered — same status, same message, either way."""
+    real_resp = client.post("/api/v1/auth/forgot-password", json={"email": new_accountant["email"]})
+    fake_resp = client.post(
+        "/api/v1/auth/forgot-password", json={"email": f"nobody_{uuid.uuid4().hex[:8]}@example.com"}
+    )
+    assert real_resp.status_code == 202
+    assert fake_resp.status_code == 202
+    assert real_resp.json()["message"] == fake_resp.json()["message"]
+
+
+def test_reset_password_full_round_trip_revokes_existing_sessions(client, new_accountant):
+    old_refresh = _login(client, new_accountant)["refresh_token"]
+    raw_token = _request_reset_token(new_accountant["email"])
+    assert raw_token is not None
+
+    reset_resp = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "BrandNewPass1", "new_password_confirm": "BrandNewPass1"},
+    )
+    assert reset_resp.status_code == 204
+
+    # Old password is dead, new password works.
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={"login_id": new_accountant["login_id"], "password": new_accountant["password"]},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/v1/auth/login", json={"login_id": new_accountant["login_id"], "password": "BrandNewPass1"}
+    )
+    assert new_login.status_code == 200
+
+    # A reset also kills every session that predates it, not just the password.
+    stale_refresh_resp = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert stale_refresh_resp.status_code == 401
+    assert stale_refresh_resp.json()["error"]["code"] == "REFRESH_REVOKED"
+
+
+def test_reset_password_rejects_garbage_token(client):
+    resp = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": "not-a-real-token", "new_password": "SomePass1", "new_password_confirm": "SomePass1"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_RESET_TOKEN"
+
+
+def test_reset_password_rejects_a_token_already_used_once(client, new_accountant):
+    raw_token = _request_reset_token(new_accountant["email"])
+
+    first = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "FirstPass1", "new_password_confirm": "FirstPass1"},
+    )
+    assert first.status_code == 204
+
+    replay = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "SecondPass1", "new_password_confirm": "SecondPass1"},
+    )
+    assert replay.status_code == 400
+    assert replay.json()["error"]["code"] == "INVALID_RESET_TOKEN"
+
+
+def test_reset_password_mismatched_confirmation_returns_422(client, new_accountant):
+    raw_token = _request_reset_token(new_accountant["email"])
+    resp = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": raw_token, "new_password": "PasswordOne1", "new_password_confirm": "PasswordTwo2"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 # --- helpers ---
+
+
+def _request_reset_token(email: str) -> str | None:
+    """Stands in for "read the token out of the email that would have been
+    sent" — the HTTP response deliberately never carries it (see
+    test_forgot_password_returns_identical_202_for_real_and_unknown_email),
+    so a test recovers it the same way the console-printed link does: by
+    asking the service directly for what it would have delivered."""
+    db = SessionLocal()
+    try:
+        raw_token = auth_service.forgot_password(db, email)
+        db.commit()
+        return raw_token
+    finally:
+        db.close()
 
 def _login(client, account: dict) -> dict:
     resp = client.post(
