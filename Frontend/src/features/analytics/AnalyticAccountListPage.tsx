@@ -16,9 +16,18 @@ export function AnalyticAccountListPage() {
       onNew={() => navigate('/analytics/new')}
       onRowClick={(a) => navigate(`/analytics/${a.id}`)}
       columns={[
-        { header: 'Name', accessor: (a) => <span className="font-medium">{a.name}</span> },
-        { header: 'Type', accessor: (a) => (a.analytic_type === 'INCOME' ? 'Income' : 'Expense') },
-        { header: 'Status', accessor: (a) => <StatusPill status={a.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (a) => a.name,
+          accessor: (a) => <span className="font-medium">{a.name}</span>,
+        },
+        {
+          header: 'Type', sortKey: 'analytic_type',
+          accessor: (a) => (a.analytic_type === 'INCOME' ? 'Income' : 'Expense'),
+        },
+        {
+          header: 'Status', csvValue: (a) => (a.is_active ? 'Active' : 'Archived'),
+          accessor: (a) => <StatusPill status={a.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
     />
   )

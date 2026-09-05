@@ -17,11 +17,20 @@ export function UserListPage() {
       onRowClick={(u) => navigate(`/settings/users/${u.id}`)}
       searchPlaceholder="Search by name, login ID, or email…"
       columns={[
-        { header: 'Name', accessor: (u) => <span className="font-medium">{u.name}</span> },
-        { header: 'Login ID', accessor: (u) => <span className="font-mono text-xs">{u.login_id}</span> },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (u) => u.name,
+          accessor: (u) => <span className="font-medium">{u.name}</span>,
+        },
+        {
+          header: 'Login ID', sortKey: 'login_id', csvValue: (u) => u.login_id,
+          accessor: (u) => <span className="font-mono text-xs">{u.login_id}</span>,
+        },
         { header: 'Email', accessor: (u) => u.email },
-        { header: 'Role', accessor: (u) => USER_ROLE_LABELS[u.role] },
-        { header: 'Status', accessor: (u) => <StatusPill status={u.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        { header: 'Role', sortKey: 'role', accessor: (u) => USER_ROLE_LABELS[u.role] },
+        {
+          header: 'Status', csvValue: (u) => (u.is_active ? 'Active' : 'Archived'),
+          accessor: (u) => <StatusPill status={u.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
     />
   )

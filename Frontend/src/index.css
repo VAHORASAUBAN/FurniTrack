@@ -183,3 +183,18 @@ h1, h2, h3, .font-display {
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Every ListView's Print button just calls window.print() - the shell
+   (Sidebar/Topbar) hides itself via print:hidden, this covers the page
+   level: white paper instead of the parchment background (real paper is
+   already the "paper"), and a plain, unclipped flow instead of the
+   viewport-height scroll container the screen layout uses. */
+@media print {
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

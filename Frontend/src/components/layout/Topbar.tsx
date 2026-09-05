@@ -32,7 +32,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-rule)] bg-[var(--color-surface)]/80 px-7 backdrop-blur-sm">
+    <header className="print:hidden flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-rule)] bg-[var(--color-surface)]/80 px-7 backdrop-blur-sm">
       <div className="text-[13px] text-[var(--color-ink-3)]">
         {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
       </div>

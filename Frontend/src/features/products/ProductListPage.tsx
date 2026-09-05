@@ -17,12 +17,18 @@ export function ProductListPage() {
       onNew={() => navigate('/products/new')}
       onRowClick={(p) => navigate(`/products/${p.id}`)}
       columns={[
-        { header: 'Name', accessor: (p) => <span className="font-medium">{p.name}</span> },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (p) => p.name,
+          accessor: (p) => <span className="font-medium">{p.name}</span>,
+        },
         { header: 'Category', accessor: (p) => p.category?.name ?? '—' },
-        { header: 'Type', accessor: (p) => PRODUCT_TYPE_LABELS[p.product_type] },
+        { header: 'Type', sortKey: 'product_type', accessor: (p) => PRODUCT_TYPE_LABELS[p.product_type] },
         { header: 'Sales Price', accessor: (p) => formatMoney(p.sales_price), className: 'text-right font-mono' },
         { header: 'Cost', accessor: (p) => formatMoney(p.purchase_cost), className: 'text-right font-mono' },
-        { header: 'Status', accessor: (p) => <StatusPill status={p.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        {
+          header: 'Status', csvValue: (p) => (p.is_active ? 'Active' : 'Archived'),
+          accessor: (p) => <StatusPill status={p.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
       kanban={{
         groupBy: (p) => p.product_type,

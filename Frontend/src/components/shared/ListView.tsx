@@ -1,5 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Inbox, LayoutGrid, List as ListIcon, Plus, Search } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Download,
+  Inbox,
+  LayoutGrid,
+  List as ListIcon,
+  Plus,
+  Printer,
+  Search,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import type { ListParams, Page } from '../../types/api'
 
@@ -7,6 +19,14 @@ export interface Column<T> {
   header: string
   accessor: (row: T) => ReactNode
   className?: string
+  /** Backend field name this column sorts by (must be in that module's
+   * SORT_FIELDS) — omit for columns the API can't sort on. */
+  sortKey?: string
+  /** Plain-text value for CSV export / print. Falls back to the accessor's
+   * own return value when that's already a string or number (most columns
+   * are); required only for columns whose accessor renders JSX (a
+   * StatusPill, an avatar) if you want that column in the export at all. */
+  csvValue?: (row: T) => string | number | null | undefined
 }
 
 export interface KanbanColumn {
@@ -38,10 +58,27 @@ interface ListViewProps<T> {
   kanban?: KanbanConfig<T>
 }
 
-/** Design doc §7.4 — the shared list screen: search, pagination, New
+const EXPORT_PAGE_SIZE = 1000
+
+function cellText<T>(col: Column<T>, row: T): string {
+  if (col.csvValue) {
+    const value = col.csvValue(row)
+    return value === null || value === undefined ? '' : String(value)
+  }
+  const value = col.accessor(row)
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+}
+
+function toCsvField(value: string): string {
+  return /["\r\n,]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+/** Design doc §7.4 — the shared list screen: search, sort, pagination, New
  * button, and (when the module supports archive) a toggle for archived
- * records. One component drives Contacts, Products, Chart of Accounts,
- * Journals, Analytic Accounts, and every document/journal-entry list. */
+ * records — plus CSV export and print, which every module gets for free
+ * through this one component. Drives Contacts, Products, Chart of
+ * Accounts, Journals, Analytic Accounts, Budgets, Users, and every
+ * document/journal-entry/payment list. */
 export function ListView<T>({
   title,
   queryKey,
@@ -57,17 +94,58 @@ export function ListView<T>({
 }: ListViewProps<T>) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<string | undefined>(undefined)
   const [includeArchived, setIncludeArchived] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [isExporting, setIsExporting] = useState(false)
   const isKanban = Boolean(kanban) && viewMode === 'kanban'
   const pageSize = isKanban ? 100 : 25
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: [queryKey, { search, page: isKanban ? 1 : page, includeArchived, pageSize }],
+    queryKey: [queryKey, { search, page: isKanban ? 1 : page, sort, includeArchived, pageSize }],
     queryFn: () =>
-      fetcher({ search: search || undefined, page: isKanban ? 1 : page, page_size: pageSize, include_archived: includeArchived }),
+      fetcher({
+        search: search || undefined,
+        sort,
+        page: isKanban ? 1 : page,
+        page_size: pageSize,
+        include_archived: includeArchived,
+      }),
     placeholderData: (prev) => prev,
   })
+
+  function toggleSort(key: string) {
+    setSort((prev) => (prev === key ? `-${key}` : prev === `-${key}` ? undefined : key))
+    setPage(1)
+  }
+
+  async function handleExportCsv() {
+    setIsExporting(true)
+    try {
+      const result = await fetcher({
+        search: search || undefined,
+        sort,
+        page: 1,
+        page_size: EXPORT_PAGE_SIZE,
+        include_archived: includeArchived,
+      })
+      const rows = [
+        columns.map((c) => toCsvField(c.header)).join(','),
+        ...result.items.map((row) => columns.map((c) => toCsvField(cellText(c, row))).join(',')),
+      ]
+      const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${title.toLowerCase().replace(/\s+/g, '-')}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -76,14 +154,14 @@ export function ListView<T>({
         {onNew && (
           <button
             onClick={onNew}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3.5 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-accent-hover)]"
+            className="print:hidden inline-flex items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3.5 py-2 text-sm font-medium text-white shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-accent-hover)]"
           >
             <Plus size={16} /> {newLabel}
           </button>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="print:hidden flex flex-wrap items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-3)]" />
           <input
@@ -110,36 +188,56 @@ export function ListView<T>({
             Show archived
           </label>
         )}
-        {kanban && (
-          <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-              title="List view"
-              className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-[var(--color-surface)] text-[var(--color-accent)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--color-ink-3)] hover:text-[var(--color-ink)]'
-              }`}
-            >
-              <ListIcon size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('kanban')}
-              aria-label="Kanban view"
-              title="Kanban view"
-              className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-                viewMode === 'kanban'
-                  ? 'bg-[var(--color-surface)] text-[var(--color-accent)] shadow-[var(--shadow-sm)]'
-                  : 'text-[var(--color-ink-3)] hover:text-[var(--color-ink)]'
-              }`}
-            >
-              <LayoutGrid size={14} />
-            </button>
-          </div>
-        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {kanban && (
+            <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+                title="List view"
+                className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-accent)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--color-ink-3)] hover:text-[var(--color-ink)]'
+                }`}
+              >
+                <ListIcon size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('kanban')}
+                aria-label="Kanban view"
+                title="Kanban view"
+                className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+                  viewMode === 'kanban'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-accent)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--color-ink-3)] hover:text-[var(--color-ink)]'
+                }`}
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            title="Export the current search as CSV"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)] disabled:opacity-50"
+          >
+            <Download size={14} /> {isExporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            title="Print this list"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+          >
+            <Printer size={14} /> Print
+          </button>
+        </div>
       </div>
 
       {isLoading && !data && (
@@ -195,13 +293,27 @@ export function ListView<T>({
       )}
 
       {!isLoading && !isError && !isKanban && (
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <div className="print:shadow-none print:border-0 overflow-x-auto rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--color-rule)] bg-[var(--color-paper-2)]/60 text-left">
+              <tr className="border-b border-[var(--color-rule)] bg-[var(--color-paper-2)]/60 text-left print:bg-transparent">
                 {columns.map((col) => (
-                  <th key={col.header} className="px-4 py-3 font-semibold text-[var(--color-ink-3)] text-[11px] uppercase tracking-wider">
-                    {col.header}
+                  <th
+                    key={col.header}
+                    className="px-4 py-3 font-semibold text-[var(--color-ink-3)] text-[11px] uppercase tracking-wider"
+                  >
+                    {col.sortKey ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.sortKey as string)}
+                        className="print:hidden inline-flex items-center gap-1 hover:text-[var(--color-ink)]"
+                      >
+                        {col.header}
+                        {sort === col.sortKey && <ChevronUp size={12} />}
+                        {sort === `-${col.sortKey}` && <ChevronDown size={12} />}
+                      </button>
+                    ) : null}
+                    <span className={col.sortKey ? 'hidden print:inline' : undefined}>{col.header}</span>
                   </th>
                 ))}
               </tr>
@@ -223,7 +335,7 @@ export function ListView<T>({
                   onClick={() => onRowClick?.(row)}
                   className={
                     onRowClick
-                      ? 'cursor-pointer border-b border-[var(--color-rule)] transition-colors last:border-0 hover:bg-[var(--color-accent-bg)]/50'
+                      ? 'cursor-pointer border-b border-[var(--color-rule)] transition-colors last:border-0 hover:bg-[var(--color-accent-bg)]/50 print:hover:bg-transparent'
                       : 'border-b border-[var(--color-rule)] last:border-0'
                   }
                 >
@@ -240,7 +352,7 @@ export function ListView<T>({
       )}
 
       {!isKanban && data && data.total_pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-[var(--color-ink-2)]">
+        <div className="print:hidden flex items-center justify-between text-sm text-[var(--color-ink-2)]">
           <span>
             {data.total} record{data.total === 1 ? '' : 's'} · page {data.page} of {data.total_pages}
           </span>
@@ -263,7 +375,7 @@ export function ListView<T>({
         </div>
       )}
       {isKanban && data && data.total > data.items.length && (
-        <p className="text-xs text-[var(--color-ink-3)]">
+        <p className="print:hidden text-xs text-[var(--color-ink-3)]">
           Showing {data.items.length} of {data.total} — narrow your search to see the rest on the board.
         </p>
       )}

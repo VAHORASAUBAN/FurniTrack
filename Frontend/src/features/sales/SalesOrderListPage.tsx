@@ -19,10 +19,16 @@ export function SalesOrderListPage() {
       supportsArchive={false}
       searchPlaceholder="Search by SO number or reference…"
       columns={[
-        { header: 'SO No.', accessor: (d) => <span className="font-mono text-xs">{d.doc_number}</span> },
-        { header: 'Date', accessor: (d) => d.doc_date },
+        {
+          header: 'SO No.', sortKey: 'doc_number', csvValue: (d) => d.doc_number,
+          accessor: (d) => <span className="font-mono text-xs">{d.doc_number}</span>,
+        },
+        { header: 'Date', sortKey: 'doc_date', accessor: (d) => d.doc_date },
         { header: 'Total', accessor: (d) => formatMoney(d.total_amount), className: 'text-right font-mono' },
-        { header: 'Status', accessor: (d) => <StatusPill status={d.status} /> },
+        {
+          header: 'Status', sortKey: 'status', csvValue: (d) => d.status,
+          accessor: (d) => <StatusPill status={d.status} />,
+        },
       ]}
       kanban={{
         groupBy: (d) => d.status,

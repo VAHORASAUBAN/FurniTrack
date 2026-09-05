@@ -19,12 +19,17 @@ export function VendorBillListPage() {
       supportsArchive={false}
       searchPlaceholder="Search by bill number or reference…"
       columns={[
-        { header: 'Bill No.', accessor: (d) => <span className="font-mono text-xs">{d.doc_number}</span> },
+        {
+          header: 'Bill No.', sortKey: 'doc_number', csvValue: (d) => d.doc_number,
+          accessor: (d) => <span className="font-mono text-xs">{d.doc_number}</span>,
+        },
         { header: 'Due Date', accessor: (d) => d.due_date ?? '—' },
         { header: 'Total', accessor: (d) => formatMoney(d.total_amount), className: 'text-right font-mono' },
         { header: 'Amount Due', accessor: (d) => formatMoney(d.balance?.amount_due), className: 'text-right font-mono' },
         {
           header: 'Status',
+          sortKey: 'status',
+          csvValue: (d) => (d.balance?.payment_status === 'PAID' ? 'PAID' : d.status),
           accessor: (d) => <StatusPill status={d.balance?.payment_status === 'PAID' ? 'PAID' : d.status} />,
         },
       ]}

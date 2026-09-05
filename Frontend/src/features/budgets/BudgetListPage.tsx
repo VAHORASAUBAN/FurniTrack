@@ -18,8 +18,14 @@ export function BudgetListPage() {
       onRowClick={(b) => navigate(`/budgets/${b.id}`)}
       searchPlaceholder="Search by budget name…"
       columns={[
-        { header: 'Name', accessor: (b) => <span className="font-medium">{b.name}</span> },
-        { header: 'Period', accessor: (b) => `${b.start_date} → ${b.end_date}` },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (b) => b.name,
+          accessor: (b) => <span className="font-medium">{b.name}</span>,
+        },
+        {
+          header: 'Period', sortKey: 'start_date', csvValue: (b) => `${b.start_date} to ${b.end_date}`,
+          accessor: (b) => `${b.start_date} → ${b.end_date}`,
+        },
         {
           header: 'Planned',
           accessor: (b) => formatMoney(b.lines.reduce((sum, l) => sum + Number.parseFloat(l.planned_amount), 0).toFixed(2)),
@@ -30,7 +36,10 @@ export function BudgetListPage() {
           accessor: (b) => formatMoney(b.lines.reduce((sum, l) => sum + Number.parseFloat(l.achieved_amount), 0).toFixed(2)),
           className: 'text-right font-mono',
         },
-        { header: 'Status', accessor: (b) => <StatusPill status={b.status} /> },
+        {
+          header: 'Status', sortKey: 'status', csvValue: (b) => b.status,
+          accessor: (b) => <StatusPill status={b.status} />,
+        },
       ]}
     />
   )

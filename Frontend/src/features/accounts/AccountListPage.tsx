@@ -17,11 +17,18 @@ export function AccountListPage() {
       onRowClick={(a) => navigate(`/accounts/${a.id}`)}
       searchPlaceholder="Search by code or name…"
       columns={[
-        { header: 'Code', accessor: (a) => <span className="font-mono text-xs">{a.code}</span> },
-        { header: 'Name', accessor: (a) => <span className="font-medium">{a.name}</span> },
-        { header: 'Type', accessor: (a) => ACCOUNT_TYPE_LABELS[a.account_type] },
+        {
+          header: 'Code', sortKey: 'code', csvValue: (a) => a.code,
+          accessor: (a) => <span className="font-mono text-xs">{a.code}</span>,
+        },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (a) => a.name,
+          accessor: (a) => <span className="font-medium">{a.name}</span>,
+        },
+        { header: 'Type', sortKey: 'account_type', accessor: (a) => ACCOUNT_TYPE_LABELS[a.account_type] },
         {
           header: 'Flags',
+          csvValue: (a) => [a.is_receivable && 'Receivable', a.is_payable && 'Payable'].filter(Boolean).join('; '),
           accessor: (a) => (
             <div className="flex gap-1.5">
               {a.is_receivable && (
@@ -37,7 +44,10 @@ export function AccountListPage() {
             </div>
           ),
         },
-        { header: 'Status', accessor: (a) => <StatusPill status={a.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        {
+          header: 'Status', csvValue: (a) => (a.is_active ? 'Active' : 'Archived'),
+          accessor: (a) => <StatusPill status={a.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
     />
   )

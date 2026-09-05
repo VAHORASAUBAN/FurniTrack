@@ -16,10 +16,19 @@ export function JournalListPage() {
       onNew={() => navigate('/journals/new')}
       onRowClick={(j) => navigate(`/journals/${j.id}`)}
       columns={[
-        { header: 'Code', accessor: (j) => <span className="font-mono text-xs">{j.code}</span> },
-        { header: 'Name', accessor: (j) => <span className="font-medium">{j.name}</span> },
-        { header: 'Type', accessor: (j) => JOURNAL_TYPE_LABELS[j.journal_type] },
-        { header: 'Status', accessor: (j) => <StatusPill status={j.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        {
+          header: 'Code', sortKey: 'code', csvValue: (j) => j.code,
+          accessor: (j) => <span className="font-mono text-xs">{j.code}</span>,
+        },
+        {
+          header: 'Name', sortKey: 'name', csvValue: (j) => j.name,
+          accessor: (j) => <span className="font-medium">{j.name}</span>,
+        },
+        { header: 'Type', sortKey: 'journal_type', accessor: (j) => JOURNAL_TYPE_LABELS[j.journal_type] },
+        {
+          header: 'Status', csvValue: (j) => (j.is_active ? 'Active' : 'Archived'),
+          accessor: (j) => <StatusPill status={j.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
     />
   )

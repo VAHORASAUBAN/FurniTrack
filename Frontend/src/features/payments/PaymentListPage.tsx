@@ -27,12 +27,18 @@ export function PaymentListPage({ paymentType, title, basePath }: PaymentListPag
       supportsArchive={false}
       searchPlaceholder="Search by payment number or note…"
       columns={[
-        { header: 'Payment No.', accessor: (p) => <span className="font-mono text-xs">{p.payment_number}</span> },
+        {
+          header: 'Payment No.', sortKey: 'payment_number', csvValue: (p) => p.payment_number,
+          accessor: (p) => <span className="font-mono text-xs">{p.payment_number}</span>,
+        },
         { header: 'Partner', accessor: (p) => p.partner_name },
-        { header: 'Date', accessor: (p) => p.payment_date },
+        { header: 'Date', sortKey: 'payment_date', accessor: (p) => p.payment_date },
         { header: 'Method', accessor: (p) => (p.method === 'BANK' ? 'Bank' : 'Cash') },
         { header: 'Amount', accessor: (p) => formatMoney(p.amount), className: 'text-right font-mono' },
-        { header: 'Status', accessor: (p) => <StatusPill status={p.status} /> },
+        {
+          header: 'Status', sortKey: 'status', csvValue: (p) => p.status,
+          accessor: (p) => <StatusPill status={p.status} />,
+        },
       ]}
     />
   )

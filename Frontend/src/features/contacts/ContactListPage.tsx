@@ -25,6 +25,8 @@ export function ContactListPage() {
       columns={[
         {
           header: 'Name',
+          sortKey: 'name',
+          csvValue: (c) => c.name,
           accessor: (c) => (
             <div className="flex items-center gap-2.5">
               {c.profile_image_url ? (
@@ -38,11 +40,15 @@ export function ContactListPage() {
             </div>
           ),
         },
-        { header: 'Type', accessor: (c) => TYPE_LABELS[c.contact_type] },
+        { header: 'Type', sortKey: 'contact_type', accessor: (c) => TYPE_LABELS[c.contact_type] },
         { header: 'Email', accessor: (c) => c.email ?? '—' },
         { header: 'Phone', accessor: (c) => c.mobile ?? '—' },
         { header: 'City', accessor: (c) => c.city ?? '—' },
-        { header: 'Status', accessor: (c) => <StatusPill status={c.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
+        {
+          header: 'Status',
+          csvValue: (c) => (c.is_active ? 'Active' : 'Archived'),
+          accessor: (c) => <StatusPill status={c.is_active ? 'ACTIVE' : 'ARCHIVED'} />,
+        },
       ]}
       kanban={{
         groupBy: (c) => c.contact_type,

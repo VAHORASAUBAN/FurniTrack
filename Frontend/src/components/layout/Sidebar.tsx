@@ -98,7 +98,7 @@ export function Sidebar() {
   const groups = role === 'ADMIN' ? [...GROUPS, SETTINGS_GROUP] : GROUPS
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-5 overflow-y-auto bg-[var(--color-sidebar)] px-3.5 py-5">
+    <aside className="print:hidden flex w-64 shrink-0 flex-col gap-5 overflow-y-auto bg-[var(--color-sidebar)] px-3.5 py-5">
       <div className="flex items-center gap-2.5 px-1.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-brass)] to-[var(--color-accent)] text-[13px] font-bold text-white font-display shadow-[var(--shadow-sm)]">
           UF
