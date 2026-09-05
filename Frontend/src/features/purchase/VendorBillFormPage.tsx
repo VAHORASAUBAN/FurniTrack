@@ -9,6 +9,7 @@ import { contactOptions, getContact } from '../../api/endpoints/contacts'
 import {
   cancelVendorBill,
   createVendorBill,
+  deleteVendorBill,
   getVendorBill,
   postVendorBill,
   sendVendorBillEmail,
@@ -73,6 +74,7 @@ export function VendorBillFormPage() {
     handleSubmit,
     control,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -120,6 +122,15 @@ export function VendorBillFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteVendorBill(billId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor-bills'] })
+      navigate('/purchase/bills')
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     saveMutation.mutate(values)
@@ -139,6 +150,7 @@ export function VendorBillFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
+    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({
@@ -146,6 +158,12 @@ export function VendorBillFormPage() {
       onClick: () => postMutation.mutate(),
       variant: 'primary' as const,
       disabled: postMutation.isPending,
+    })
+    actions.push({
+      label: deleteMutation.isPending ? 'Deleting…' : 'Delete',
+      onClick: () => deleteMutation.mutate(),
+      variant: 'danger' as const,
+      disabled: deleteMutation.isPending,
     })
   }
   if (!isNew) {

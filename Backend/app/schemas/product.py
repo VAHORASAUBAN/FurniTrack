@@ -55,6 +55,7 @@ class ProductOut(BaseModel):
     default_tax_rate: Money
     income_account_id: int | None
     expense_account_id: int | None
+    image_url: str | None
     is_active: bool
     archived_at: datetime | None
     created_at: datetime

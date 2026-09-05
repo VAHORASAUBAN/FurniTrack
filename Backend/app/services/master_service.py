@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.pagination import PageParams, apply_sort, paginate
 
 
@@ -86,3 +86,16 @@ def unarchive_record(db: Session, obj):
     obj.archived_at = None
     db.flush()
     return obj
+
+
+def delete_draft(db: Session, obj, *, status_field: str = "status", not_draft_message: str):
+    """Hard delete — only ever for a DRAFT record (Purchase/Sales documents,
+    Journal Entries, Budgets). A draft has no journal entries and nothing
+    else references it yet (every downstream link - Bill from PO, Invoice
+    from SO, a budget revision - only becomes possible once the source
+    record leaves DRAFT), so removing the row outright is safe: unlike
+    Cancel, there is no ledger history to preserve."""
+    if getattr(obj, status_field).value != "DRAFT":
+        raise ConflictError(not_draft_message, code="NOT_DRAFT")
+    db.delete(obj)
+    db.flush()

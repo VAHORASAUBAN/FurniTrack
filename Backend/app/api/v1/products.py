@@ -2,9 +2,14 @@
 ProductCategory supports create-on-the-fly from the product form (the
 wireframe's "Category can be created and saved on the fly (Many2one Field)")
 — its POST endpoint has no extra ceremony for exactly that reason."""
-from fastapi import APIRouter, Depends, status
+import os
+import uuid
 
+from fastapi import APIRouter, Depends, File, UploadFile, status
+
+from app.core.config import settings
 from app.core.deps import DbSession, require_roles
+from app.core.exceptions import AppError
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import Product, ProductCategory
 from app.models.enums import UserRole
@@ -17,6 +22,8 @@ from app.schemas.product import (
     ProductUpdate,
 )
 from app.services import master_service
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 SEARCH_FIELDS = ["name"]
 SORT_FIELDS = {"name", "product_type", "updated_at"}
@@ -69,6 +76,31 @@ def archive_product(product_id: int, db: DbSession):
 def unarchive_product(product_id: int, db: DbSession):
     product = master_service.get_record(db, Product, product_id, not_found_message="Product not found.")
     return master_service.unarchive_record(db, product)
+
+
+@router.post("/{product_id}/image")
+async def upload_product_image(product_id: int, db: DbSession, file: UploadFile = File(...)):
+    product = master_service.get_record(db, Product, product_id, not_found_message="Product not found.")
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise AppError(
+            f"Unsupported image type {file.content_type!r}. Allowed: jpeg, png, webp.",
+            code="UNSUPPORTED_IMAGE_TYPE",
+        )
+    contents = await file.read()
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if len(contents) > max_bytes:
+        raise AppError(f"Image exceeds {settings.MAX_UPLOAD_SIZE_MB}MB limit.", code="IMAGE_TOO_LARGE")
+
+    ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[file.content_type]
+    filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}{ext}"
+    path = os.path.join(settings.UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(contents)
+
+    product.image_url = f"/static/{filename}"
+    db.flush()
+    return {"image_url": product.image_url}
 
 
 @category_router.get("", response_model=Page[ProductCategoryOut])

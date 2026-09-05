@@ -101,6 +101,12 @@ def update_purchase_order(order_id: int, payload: DocumentUpdate, db: DbSession)
     return document_service.attach_balance(db, document)
 
 
+@router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_purchase_order(order_id: int, db: DbSession):
+    document = _get_document(db, order_id, expected_type=DocType.PURCHASE_ORDER)
+    master_service.delete_draft(db, document, not_draft_message="Only a draft purchase order can be deleted.")
+
+
 @router.post("/orders/{order_id}/confirm", response_model=DocumentOut)
 def confirm_purchase_order(order_id: int, db: DbSession):
     document = _get_document(db, order_id, expected_type=DocType.PURCHASE_ORDER)
@@ -173,6 +179,12 @@ def update_vendor_bill(bill_id: int, payload: DocumentUpdate, db: DbSession):
     document = _get_document(db, bill_id, expected_type=DocType.VENDOR_BILL)
     document = document_service.update_document(db, document, payload.model_dump(exclude_unset=True))
     return document_service.attach_balance(db, document)
+
+
+@router.delete("/bills/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vendor_bill(bill_id: int, db: DbSession):
+    document = _get_document(db, bill_id, expected_type=DocType.VENDOR_BILL)
+    master_service.delete_draft(db, document, not_draft_message="Only a draft bill can be deleted.")
 
 
 @router.post("/bills/{bill_id}/post", response_model=DocumentOut)

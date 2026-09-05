@@ -11,6 +11,7 @@ import {
   cancelBudget,
   confirmBudget,
   createBudget,
+  deleteBudget,
   getBudget,
   reviseBudget,
   updateBudget,
@@ -62,6 +63,7 @@ export function BudgetFormPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -117,6 +119,15 @@ export function BudgetFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteBudget(budgetId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] })
+      navigate('/budgets')
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     saveMutation.mutate(values)
@@ -136,11 +147,18 @@ export function BudgetFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
+    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({
       label: 'Confirm', onClick: () => confirmMutation.mutate(), variant: 'primary' as const,
       disabled: confirmMutation.isPending,
+    })
+    actions.push({
+      label: deleteMutation.isPending ? 'Deleting…' : 'Delete',
+      onClick: () => deleteMutation.mutate(),
+      variant: 'danger' as const,
+      disabled: deleteMutation.isPending,
     })
   }
   if (!isNew && status === 'CONFIRMED') {

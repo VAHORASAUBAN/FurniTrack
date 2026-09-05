@@ -55,6 +55,7 @@ export function UserFormPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -147,6 +148,7 @@ export function UserFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending,
         },
+        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
       ]}
     >
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">

@@ -97,6 +97,12 @@ def update_sales_order(order_id: int, payload: DocumentUpdate, db: DbSession):
     return document_service.attach_balance(db, document)
 
 
+@router.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_sales_order(order_id: int, db: DbSession):
+    document = _get_document(db, order_id, expected_type=DocType.SALES_ORDER)
+    master_service.delete_draft(db, document, not_draft_message="Only a draft sales order can be deleted.")
+
+
 @router.post("/orders/{order_id}/confirm", response_model=DocumentOut)
 def confirm_sales_order(order_id: int, db: DbSession):
     document = _get_document(db, order_id, expected_type=DocType.SALES_ORDER)
@@ -164,6 +170,12 @@ def update_customer_invoice(invoice_id: int, payload: DocumentUpdate, db: DbSess
     document = _get_document(db, invoice_id, expected_type=DocType.CUSTOMER_INVOICE)
     document = document_service.update_document(db, document, payload.model_dump(exclude_unset=True))
     return document_service.attach_balance(db, document)
+
+
+@router.delete("/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_customer_invoice(invoice_id: int, db: DbSession):
+    document = _get_document(db, invoice_id, expected_type=DocType.CUSTOMER_INVOICE)
+    master_service.delete_draft(db, document, not_draft_message="Only a draft invoice can be deleted.")
 
 
 @router.post("/invoices/{invoice_id}/post", response_model=DocumentOut)

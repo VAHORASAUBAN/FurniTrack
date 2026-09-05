@@ -33,6 +33,13 @@ export async function unarchiveProduct(id: number): Promise<Product> {
   return resp.data
 }
 
+export async function uploadProductImage(id: number, file: File): Promise<{ image_url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const resp = await apiClient.post<{ image_url: string }>(`/products/${id}/image`, form)
+  return resp.data
+}
+
 export async function listProductCategories(search: string): Promise<ProductCategory[]> {
   const resp = await apiClient.get<Page<ProductCategory>>('/product-categories', { params: { search, page_size: 25 } })
   return resp.data.items

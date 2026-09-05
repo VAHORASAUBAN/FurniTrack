@@ -11,8 +11,10 @@ import {
   getContact,
   unarchiveContact,
   updateContact,
+  uploadContactImage,
 } from '../../api/endpoints/contacts'
 import { FormShell } from '../../components/shared/FormShell'
+import { ImageUploadField } from '../../components/shared/ImageUploadField'
 import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 import type { PortalCredentials } from '../../types/contact'
@@ -51,6 +53,7 @@ export function ContactFormPage() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -139,6 +142,7 @@ export function ContactFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending || updateMutation.isPending,
         },
+        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
       ]}
     >
       {issuedCredentials && (
@@ -159,6 +163,18 @@ export function ContactFormPage() {
           >
             Done
           </button>
+        </div>
+      )}
+
+      {!isNew && (
+        <div className="mb-5">
+          <ImageUploadField
+            imageUrl={contact?.profile_image_url ?? null}
+            label="Photo"
+            shape="circle"
+            onUpload={(file) => uploadContactImage(contactId as number, file)}
+            onUploaded={() => queryClient.invalidateQueries({ queryKey: ['contacts', contactId] })}
+          />
         </div>
       )}
 

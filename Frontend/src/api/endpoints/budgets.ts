@@ -36,3 +36,7 @@ export async function reviseBudget(id: number): Promise<Budget> {
   const resp = await apiClient.post<Budget>(`/budgets/${id}/revise`)
   return resp.data
 }
+
+export async function deleteBudget(id: number): Promise<void> {
+  await apiClient.delete(`/budgets/${id}`)
+}

@@ -221,3 +221,8 @@ __marimo__/
 node_modules/
 Frontend/dist/
 Frontend/.vite/
+
+# User-uploaded contact/product photos (app/core/config.py's UPLOAD_DIR) -
+# runtime data, not source; keep the directory tracked via .gitkeep.
+Backend/app/static/uploads/*
+!Backend/app/static/uploads/.gitkeep

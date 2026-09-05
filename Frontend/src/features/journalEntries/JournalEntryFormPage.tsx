@@ -12,6 +12,7 @@ import { contactOptions } from '../../api/endpoints/contacts'
 import {
   cancelJournalEntry,
   createJournalEntry,
+  deleteJournalEntry,
   getJournalEntry,
   postJournalEntry,
   resetJournalEntryToDraft,
@@ -73,6 +74,7 @@ export function JournalEntryFormPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -160,6 +162,15 @@ export function JournalEntryFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteJournalEntry(entryId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] })
+      navigate('/journal-entries')
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     isNew ? createMutation.mutate(values) : updateMutation.mutate(values)
@@ -175,6 +186,7 @@ export function JournalEntryFormPage() {
       variant: 'secondary' as const,
       disabled: updateMutation.isPending || createMutation.isPending,
     })
+    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
   }
   if (!isNew) {
     actions.push({ label: 'Print', onClick: () => openPdf(`/journal-entries/${entryId}/pdf`), variant: 'secondary' as const })
@@ -185,6 +197,12 @@ export function JournalEntryFormPage() {
       onClick: () => postMutation.mutate(),
       variant: 'primary' as const,
       disabled: postMutation.isPending,
+    })
+    actions.push({
+      label: deleteMutation.isPending ? 'Deleting…' : 'Delete',
+      onClick: () => deleteMutation.mutate(),
+      variant: 'danger' as const,
+      disabled: deleteMutation.isPending,
     })
   }
   if (!isNew && status === 'POSTED' && canManage) {

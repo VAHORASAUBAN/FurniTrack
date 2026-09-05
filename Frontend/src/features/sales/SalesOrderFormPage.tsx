@@ -11,6 +11,7 @@ import {
   confirmSalesOrder,
   createInvoiceFromOrder,
   createSalesOrder,
+  deleteSalesOrder,
   getSalesOrder,
   updateSalesOrder,
 } from '../../api/endpoints/sales'
@@ -57,6 +58,7 @@ export function SalesOrderFormPage() {
     handleSubmit,
     control,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -108,6 +110,15 @@ export function SalesOrderFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSalesOrder(orderId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
+      navigate('/sales/orders')
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     saveMutation.mutate(values)
@@ -126,9 +137,18 @@ export function SalesOrderFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
+    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
   }
   if (!isNew) {
     actions.push({ label: 'Print', onClick: () => openPdf(`/sales/orders/${orderId}/pdf`), variant: 'secondary' as const })
+  }
+  if (!isNew && status === 'DRAFT') {
+    actions.push({
+      label: deleteMutation.isPending ? 'Deleting…' : 'Delete',
+      onClick: () => deleteMutation.mutate(),
+      variant: 'danger' as const,
+      disabled: deleteMutation.isPending,
+    })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({

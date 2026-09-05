@@ -37,6 +37,7 @@ class Product(Base, TimestampMixin, ArchiveMixin):
     # §3.1 account resolution chain, step 2 — "sales/purchase account set by default".
     income_account_id: Mapped[int | None] = mapped_column(UBigInt, ForeignKey("chart_of_account.id"), nullable=True)
     expense_account_id: Mapped[int | None] = mapped_column(UBigInt, ForeignKey("chart_of_account.id"), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     category: Mapped["ProductCategory | None"] = relationship()
     income_account: Mapped["ChartOfAccount | None"] = relationship(foreign_keys=[income_account_id])

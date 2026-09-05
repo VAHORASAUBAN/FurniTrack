@@ -32,6 +32,10 @@ export async function cancelSalesOrder(id: number): Promise<Document> {
   return resp.data
 }
 
+export async function deleteSalesOrder(id: number): Promise<void> {
+  await apiClient.delete(`/sales/orders/${id}`)
+}
+
 export async function createInvoiceFromOrder(orderId: number): Promise<Document> {
   const resp = await apiClient.post<Document>(`/sales/orders/${orderId}/create-invoice`)
   return resp.data
@@ -70,4 +74,8 @@ export async function cancelCustomerInvoice(id: number): Promise<Document> {
 export async function sendCustomerInvoiceEmail(id: number, toEmail?: string): Promise<{ message: string }> {
   const resp = await apiClient.post<{ message: string }>(`/sales/invoices/${id}/send`, { to_email: toEmail })
   return resp.data
+}
+
+export async function deleteCustomerInvoice(id: number): Promise<void> {
+  await apiClient.delete(`/sales/invoices/${id}`)
 }

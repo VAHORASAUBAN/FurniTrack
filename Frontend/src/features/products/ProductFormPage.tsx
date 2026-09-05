@@ -14,8 +14,10 @@ import {
   createProductCategory,
   unarchiveProduct,
   updateProduct,
+  uploadProductImage,
 } from '../../api/endpoints/products'
 import { FormShell } from '../../components/shared/FormShell'
+import { ImageUploadField } from '../../components/shared/ImageUploadField'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
 import { useGoBack } from '../../hooks/useGoBack'
@@ -59,6 +61,7 @@ export function ProductFormPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -134,8 +137,20 @@ export function ProductFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending || updateMutation.isPending,
         },
+        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
       ]}
     >
+      {!isNew && (
+        <div className="mb-5">
+          <ImageUploadField
+            imageUrl={product?.image_url ?? null}
+            label="Photo"
+            onUpload={(file) => uploadProductImage(productId as number, file)}
+            onUploaded={() => queryClient.invalidateQueries({ queryKey: ['products', productId] })}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Product Name</label>

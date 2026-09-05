@@ -33,6 +33,13 @@ export async function unarchiveContact(id: number): Promise<Contact> {
   return resp.data
 }
 
+export async function uploadContactImage(id: number, file: File): Promise<{ profile_image_url: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const resp = await apiClient.post<{ profile_image_url: string }>(`/contacts/${id}/image`, form)
+  return resp.data
+}
+
 export async function contactOptions(search: string): Promise<Many2OneOption[]> {
   const page = await listContacts({ search, page_size: 25 })
   return page.items.map((c) => ({ id: c.id, label: c.name }))

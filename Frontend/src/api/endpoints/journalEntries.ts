@@ -36,3 +36,7 @@ export async function resetJournalEntryToDraft(id: number): Promise<JournalEntry
   const resp = await apiClient.post<JournalEntry>(`/journal-entries/${id}/reset-to-draft`)
   return resp.data
 }
+
+export async function deleteJournalEntry(id: number): Promise<void> {
+  await apiClient.delete(`/journal-entries/${id}`)
+}

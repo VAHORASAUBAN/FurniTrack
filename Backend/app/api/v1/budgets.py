@@ -60,6 +60,12 @@ def update_budget(budget_id: int, payload: BudgetUpdate, db: DbSession):
     return budget_service.attach_achieved(db, budget)
 
 
+@router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_budget(budget_id: int, db: DbSession):
+    budget = master_service.get_record(db, Budget, budget_id, not_found_message="Budget not found.")
+    master_service.delete_draft(db, budget, not_draft_message="Only a draft budget can be deleted.")
+
+
 @router.post("/{budget_id}/confirm", response_model=BudgetOut)
 def confirm_budget(budget_id: int, db: DbSession):
     budget = master_service.get_record(db, Budget, budget_id, not_found_message="Budget not found.")

@@ -17,6 +17,7 @@ export interface Product {
   default_tax_rate: string
   income_account_id: number | null
   expense_account_id: number | null
+  image_url: string | null
   is_active: boolean
   archived_at: string | null
   created_at: string

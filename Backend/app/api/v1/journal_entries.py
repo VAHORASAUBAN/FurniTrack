@@ -54,6 +54,12 @@ def get_journal_entry(entry_id: int, db: DbSession):
     return master_service.get_record(db, JournalEntry, entry_id, not_found_message="Journal entry not found.")
 
 
+@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_journal_entry(entry_id: int, db: DbSession):
+    entry = master_service.get_record(db, JournalEntry, entry_id, not_found_message="Journal entry not found.")
+    master_service.delete_draft(db, entry, not_draft_message="Only a draft journal entry can be deleted.")
+
+
 @router.patch("/{entry_id}", response_model=JournalEntryOut)
 def update_journal_entry(entry_id: int, payload: JournalEntryUpdate, db: DbSession):
     entry = master_service.get_record(db, JournalEntry, entry_id, not_found_message="Journal entry not found.")

@@ -9,6 +9,7 @@ import { contactOptions, getContact } from '../../api/endpoints/contacts'
 import {
   cancelCustomerInvoice,
   createCustomerInvoice,
+  deleteCustomerInvoice,
   getCustomerInvoice,
   postCustomerInvoice,
   sendCustomerInvoiceEmail,
@@ -73,6 +74,7 @@ export function CustomerInvoiceFormPage() {
     handleSubmit,
     control,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,6 +123,15 @@ export function CustomerInvoiceFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCustomerInvoice(invoiceId as number),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-invoices'] })
+      navigate('/sales/invoices')
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     saveMutation.mutate(values)
@@ -140,6 +151,7 @@ export function CustomerInvoiceFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
+    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({
@@ -147,6 +159,12 @@ export function CustomerInvoiceFormPage() {
       onClick: () => postMutation.mutate(),
       variant: 'primary' as const,
       disabled: postMutation.isPending,
+    })
+    actions.push({
+      label: deleteMutation.isPending ? 'Deleting…' : 'Delete',
+      onClick: () => deleteMutation.mutate(),
+      variant: 'danger' as const,
+      disabled: deleteMutation.isPending,
     })
   }
   if (!isNew) {
