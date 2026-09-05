@@ -28,6 +28,25 @@ export function CustomerInvoiceListPage() {
           accessor: (d) => <StatusPill status={d.balance?.payment_status === 'PAID' ? 'PAID' : d.status} />,
         },
       ]}
+      kanban={{
+        groupBy: (d) => (d.status === 'POSTED' ? d.balance?.payment_status ?? 'UNPAID' : d.status),
+        columns: [
+          { key: 'DRAFT', label: 'Draft' },
+          { key: 'UNPAID', label: 'Unpaid' },
+          { key: 'PARTIALLY_PAID', label: 'Partially Paid' },
+          { key: 'PAID', label: 'Paid' },
+          { key: 'CANCELLED', label: 'Cancelled' },
+        ],
+        renderCard: (d) => (
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-xs font-medium text-[var(--color-ink)]">{d.doc_number}</span>
+            <span className="text-xs text-[var(--color-ink-3)]">Due {d.due_date ?? '—'}</span>
+            <span className="font-mono text-xs text-[var(--color-ink-2)]">
+              {d.balance?.payment_status === 'PAID' ? formatMoney(d.total_amount) : formatMoney(d.balance?.amount_due)}
+            </span>
+          </div>
+        ),
+      }}
     />
   )
 }

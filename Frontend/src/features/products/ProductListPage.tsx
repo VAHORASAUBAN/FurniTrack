@@ -24,6 +24,24 @@ export function ProductListPage() {
         { header: 'Cost', accessor: (p) => formatMoney(p.purchase_cost), className: 'text-right font-mono' },
         { header: 'Status', accessor: (p) => <StatusPill status={p.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
       ]}
+      kanban={{
+        groupBy: (p) => p.product_type,
+        columns: [
+          { key: 'GOODS', label: 'Goods' },
+          { key: 'SERVICE', label: 'Service' },
+          { key: 'COMBO', label: 'Combo' },
+        ],
+        renderCard: (p) => (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-[var(--color-ink)]">{p.name}</span>
+            <span className="text-xs text-[var(--color-ink-3)]">{p.category?.name ?? 'No category'}</span>
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs text-[var(--color-ink-2)]">{formatMoney(p.sales_price)}</span>
+              {!p.is_active && <StatusPill status="ARCHIVED" />}
+            </div>
+          </div>
+        ),
+      }}
     />
   )
 }

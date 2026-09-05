@@ -24,6 +24,21 @@ export function SalesOrderListPage() {
         { header: 'Total', accessor: (d) => formatMoney(d.total_amount), className: 'text-right font-mono' },
         { header: 'Status', accessor: (d) => <StatusPill status={d.status} /> },
       ]}
+      kanban={{
+        groupBy: (d) => d.status,
+        columns: [
+          { key: 'DRAFT', label: 'Draft' },
+          { key: 'CONFIRMED', label: 'Confirmed' },
+          { key: 'CANCELLED', label: 'Cancelled' },
+        ],
+        renderCard: (d) => (
+          <div className="flex flex-col gap-1.5">
+            <span className="font-mono text-xs font-medium text-[var(--color-ink)]">{d.doc_number}</span>
+            <span className="text-xs text-[var(--color-ink-3)]">{d.doc_date}</span>
+            <span className="font-mono text-xs text-[var(--color-ink-2)]">{formatMoney(d.total_amount)}</span>
+          </div>
+        ),
+      }}
     />
   )
 }

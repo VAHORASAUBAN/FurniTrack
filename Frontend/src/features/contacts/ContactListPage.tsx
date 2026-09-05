@@ -44,6 +44,31 @@ export function ContactListPage() {
         { header: 'City', accessor: (c) => c.city ?? '—' },
         { header: 'Status', accessor: (c) => <StatusPill status={c.is_active ? 'ACTIVE' : 'ARCHIVED'} /> },
       ]}
+      kanban={{
+        groupBy: (c) => c.contact_type,
+        columns: [
+          { key: 'CUSTOMER', label: 'Customer' },
+          { key: 'VENDOR', label: 'Vendor' },
+          { key: 'BOTH', label: 'Customer & Vendor' },
+        ],
+        renderCard: (c) => (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              {c.profile_image_url ? (
+                <img src={c.profile_image_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-accent-bg)] text-[10px] font-semibold text-[var(--color-accent)]">
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm font-medium text-[var(--color-ink)]">{c.name}</span>
+            </div>
+            <div className="text-xs text-[var(--color-ink-3)]">{c.email ?? c.mobile ?? '—'}</div>
+            {c.city && <div className="text-xs text-[var(--color-ink-3)]">{c.city}</div>}
+            {!c.is_active && <StatusPill status="ARCHIVED" />}
+          </div>
+        ),
+      }}
     />
   )
 }
