@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Design tokens — a considered neutral + one accent, not Tailwind's raw
+   defaults. Ink is blue-black rather than pure black; the accent is a
+   restrained teal used only for primary actions and the active nav item. */
+:root {
+  --color-paper: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-ink: #16202b;
+  --color-ink-2: #4c5661;
+  --color-ink-3: #79838d;
+  --color-rule: #e2e0da;
+  --color-rule-2: #c7c4bb;
+  --color-accent: #0f6e63;
+  --color-accent-hover: #0b5951;
+  --color-accent-bg: #e6f0ee;
+  --color-danger: #a32e3a;
+  --color-danger-bg: #f6e9e9;
+  --color-warning: #a6740b;
+  --color-warning-bg: #f7efdd;
+  --color-success: #2f6b4f;
+  --color-success-bg: #e4ede7;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-ink-3: var(--color-ink-3);
+  --color-rule: var(--color-rule);
+  --color-rule-2: var(--color-rule-2);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-bg: var(--color-accent-bg);
+  --color-danger: var(--color-danger);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-warning: var(--color-warning);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-success: var(--color-success);
+  --color-success-bg: var(--color-success-bg);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  box-sizing: border-box;
+}
