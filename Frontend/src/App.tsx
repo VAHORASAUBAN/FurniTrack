@@ -1,5 +1,6 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
+import { ToastContainer } from './components/shared/ToastContainer'
 import { AccountFormPage } from './features/accounts/AccountFormPage'
 import { AccountListPage } from './features/accounts/AccountListPage'
 import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
@@ -49,6 +50,7 @@ function App() {
 
   return (
     <Router>
+      <ToastContainer />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />

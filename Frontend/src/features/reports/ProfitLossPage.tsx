@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { Download } from 'lucide-react'
 import { useState } from 'react'
 import { getProfitLoss } from '../../api/endpoints/reports'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 import type { ProfitLossLine } from '../../types/report'
 
 function Section({ title, rows, total, negative = false }: { title: string; rows: ProfitLossLine[]; total: string; negative?: boolean }) {
@@ -52,6 +54,13 @@ export function ProfitLossPage() {
             type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
             className="rounded-md border border-[var(--color-rule-2)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           />
+          <button
+            type="button"
+            onClick={() => openPdf(`/reports/profit-loss/pdf?date_from=${dateFrom}&date_to=${dateTo}`)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+          >
+            <Download size={14} /> Download PDF
+          </button>
         </div>
       </div>
 

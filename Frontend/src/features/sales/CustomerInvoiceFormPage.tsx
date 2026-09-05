@@ -19,6 +19,7 @@ import { emptyDocumentLine, LineItemGrid } from '../../components/shared/LineIte
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { PayDialog } from '../../components/shared/PayDialog'
 import { SendEmailDialog } from '../../components/shared/SendEmailDialog'
+import { useGoBack } from '../../hooks/useGoBack'
 import { formatMoney } from '../../lib/money'
 import { openPdf } from '../../lib/pdf'
 import { useAuthStore } from '../../stores/authStore'
@@ -47,6 +48,7 @@ export function CustomerInvoiceFormPage() {
   const isNew = id === 'new'
   const invoiceId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/sales/invoices')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -171,7 +173,7 @@ export function CustomerInvoiceFormPage() {
     <FormShell
       title={isNew ? 'New Customer Invoice' : invoice?.doc_number ?? 'Customer Invoice'}
       status={invoice?.balance?.payment_status === 'PAID' ? 'PAID' : status}
-      onBack={() => navigate('/sales/invoices')}
+      onBack={goBack}
       actions={actions}
     >
       {invoice?.source_document_id && (

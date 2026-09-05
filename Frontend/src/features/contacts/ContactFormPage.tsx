@@ -13,6 +13,7 @@ import {
   updateContact,
 } from '../../api/endpoints/contacts'
 import { FormShell } from '../../components/shared/FormShell'
+import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 import type { PortalCredentials } from '../../types/contact'
 
@@ -35,6 +36,7 @@ export function ContactFormPage() {
   const isNew = id === 'new'
   const contactId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/contacts')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -120,7 +122,7 @@ export function ContactFormPage() {
     <FormShell
       title={isNew ? 'New Contact' : contact?.name ?? 'Contact'}
       status={!isNew && contact ? (contact.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
-      onBack={() => navigate('/contacts')}
+      onBack={goBack}
       actions={[
         ...(canArchive
           ? [

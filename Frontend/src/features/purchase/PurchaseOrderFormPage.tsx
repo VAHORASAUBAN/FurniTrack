@@ -17,6 +17,8 @@ import {
 import { FormShell } from '../../components/shared/FormShell'
 import { emptyDocumentLine, LineItemGrid } from '../../components/shared/LineItemGrid'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
+import { useGoBack } from '../../hooks/useGoBack'
+import { openPdf } from '../../lib/pdf'
 
 const lineSchema = z.object({
   product_id: z.number().nullable().optional(),
@@ -40,6 +42,7 @@ export function PurchaseOrderFormPage() {
   const isNew = id === 'new'
   const orderId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/purchase/orders')
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -124,6 +127,9 @@ export function PurchaseOrderFormPage() {
       disabled: saveMutation.isPending,
     })
   }
+  if (!isNew) {
+    actions.push({ label: 'Print', onClick: () => openPdf(`/purchase/orders/${orderId}/pdf`), variant: 'secondary' as const })
+  }
   if (!isNew && status === 'DRAFT') {
     actions.push({
       label: 'Confirm',
@@ -153,7 +159,7 @@ export function PurchaseOrderFormPage() {
     <FormShell
       title={isNew ? 'New Purchase Order' : order?.doc_number ?? 'Purchase Order'}
       status={status}
-      onBack={() => navigate('/purchase/orders')}
+      onBack={goBack}
       actions={actions}
     >
       <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6">

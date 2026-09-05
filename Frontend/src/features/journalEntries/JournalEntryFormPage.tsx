@@ -21,7 +21,9 @@ import { journalOptions } from '../../api/endpoints/journals'
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
+import { useGoBack } from '../../hooks/useGoBack'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 import { useAuthStore } from '../../stores/authStore'
 
 const moneyString = z.string().regex(/^\d*(\.\d{1,2})?$/, 'Enter a valid amount')
@@ -56,6 +58,7 @@ export function JournalEntryFormPage() {
   const isNew = id === 'new'
   const entryId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/journal-entries')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -173,6 +176,9 @@ export function JournalEntryFormPage() {
       disabled: updateMutation.isPending || createMutation.isPending,
     })
   }
+  if (!isNew) {
+    actions.push({ label: 'Print', onClick: () => openPdf(`/journal-entries/${entryId}/pdf`), variant: 'secondary' as const })
+  }
   if (!isNew && status === 'DRAFT') {
     actions.push({
       label: postMutation.isPending ? 'Posting…' : 'Post',
@@ -200,7 +206,7 @@ export function JournalEntryFormPage() {
     <FormShell
       title={isNew ? 'New Journal Entry' : entry?.entry_number ?? 'Journal Entry'}
       status={status}
-      onBack={() => navigate('/journal-entries')}
+      onBack={goBack}
       actions={actions}
     >
       <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-6">

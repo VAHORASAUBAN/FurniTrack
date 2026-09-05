@@ -118,6 +118,19 @@ def create_invoice_from_order(order_id: int, db: DbSession, user: CurrentUser):
     return document_service.attach_balance(db, invoice)
 
 
+@router.get("/orders/{order_id}/pdf")
+def get_sales_order_pdf(order_id: int, db: DbSession):
+    document = _get_document(db, order_id, expected_type=DocType.SALES_ORDER)
+    document_service.attach_balance(db, document)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
+    )
+
+
 # ---------- Customer Invoice ----------
 
 

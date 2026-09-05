@@ -4,14 +4,16 @@ edit lines → Post (blocking on the balance rule) → optionally Cancel
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
 
+from app.accounting.resolver import get_company_settings
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import JournalEntry
 from app.models.enums import JournalEntryStatus, UserRole
 from app.schemas.common import Page
 from app.schemas.journal_entry import JournalEntryCreate, JournalEntryOut, JournalEntryUpdate
-from app.services import journal_entry_service, master_service
+from app.services import journal_entry_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["entry_number", "reference"]
 SORT_FIELDS = {"entry_number", "entry_date", "status"}
@@ -76,6 +78,18 @@ def cancel_journal_entry(entry_id: int, db: DbSession, user: CurrentUser):
     reversal = journal_entry_service.cancel(db, entry, cancelled_by_user_id=user.id)
     db.refresh(reversal)
     return reversal
+
+
+@router.get("/{entry_id}/pdf")
+def get_journal_entry_pdf(entry_id: int, db: DbSession):
+    entry = master_service.get_record(db, JournalEntry, entry_id, not_found_message="Journal entry not found.")
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_journal_entry_pdf(entry, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{entry.entry_number.replace("/", "-")}.pdf"'},
+    )
 
 
 @router.post(

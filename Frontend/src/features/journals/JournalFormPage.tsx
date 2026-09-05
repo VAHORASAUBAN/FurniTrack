@@ -15,6 +15,7 @@ import {
 } from '../../api/endpoints/journals'
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
+import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 import { JOURNAL_TYPE_LABELS } from '../../types/journal'
 
@@ -33,6 +34,7 @@ export function JournalFormPage() {
   const isNew = id === 'new'
   const journalId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/journals')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -101,7 +103,7 @@ export function JournalFormPage() {
     <FormShell
       title={isNew ? 'New Journal' : journal?.name ?? 'Journal'}
       status={!isNew && journal ? (journal.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
-      onBack={() => navigate('/journals')}
+      onBack={goBack}
       actions={[
         ...(canArchive
           ? [

@@ -66,6 +66,36 @@ export function DashboardPage() {
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-[22px] font-semibold tracking-tight text-[var(--color-ink)]">Dashboard</h1>
 
+      <div className="rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <h2 className="border-b border-[var(--color-rule)] px-5 py-3 font-display text-sm font-semibold text-[var(--color-ink)]">
+          Recent Activity
+        </h2>
+        {data.recent_documents.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-[var(--color-ink-3)]">Nothing posted yet.</div>
+        ) : (
+          <div>
+            {data.recent_documents.map((doc) => (
+              <div
+                key={`${doc.doc_type}-${doc.id}`}
+                onClick={() => navigate(documentPath(doc.doc_type, doc.id))}
+                className="flex cursor-pointer items-center justify-between border-b border-[var(--color-rule)] px-5 py-3 last:border-0 hover:bg-[var(--color-accent-bg)]/50"
+              >
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-ink)]">{doc.doc_number}</div>
+                  <div className="text-xs text-[var(--color-ink-3)]">
+                    {DOC_TYPE_LABEL[doc.doc_type]} · {doc.partner_name} · {doc.doc_date}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm text-[var(--color-ink)]">{formatMoney(doc.total_amount)}</span>
+                  <StatusPill status={doc.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiTile
           icon={<ArrowDownCircle size={16} />}
@@ -125,36 +155,6 @@ export function DashboardPage() {
             ]}
           />
         </div>
-      </div>
-
-      <div className="rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <h2 className="border-b border-[var(--color-rule)] px-5 py-3 font-display text-sm font-semibold text-[var(--color-ink)]">
-          Recent Activity
-        </h2>
-        {data.recent_documents.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[var(--color-ink-3)]">Nothing posted yet.</div>
-        ) : (
-          <div>
-            {data.recent_documents.map((doc) => (
-              <div
-                key={`${doc.doc_type}-${doc.id}`}
-                onClick={() => navigate(documentPath(doc.doc_type, doc.id))}
-                className="flex cursor-pointer items-center justify-between border-b border-[var(--color-rule)] px-5 py-3 last:border-0 hover:bg-[var(--color-accent-bg)]/50"
-              >
-                <div>
-                  <div className="text-sm font-medium text-[var(--color-ink)]">{doc.doc_number}</div>
-                  <div className="text-xs text-[var(--color-ink-3)]">
-                    {DOC_TYPE_LABEL[doc.doc_type]} · {doc.partner_name} · {doc.doc_date}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-[var(--color-ink)]">{formatMoney(doc.total_amount)}</span>
-                  <StatusPill status={doc.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

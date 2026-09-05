@@ -13,6 +13,7 @@ import {
   updateAnalyticAccount,
 } from '../../api/endpoints/analyticAccounts'
 import { FormShell } from '../../components/shared/FormShell'
+import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 
 const schema = z.object({
@@ -26,6 +27,7 @@ export function AnalyticAccountFormPage() {
   const isNew = id === 'new'
   const analyticId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/analytics')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -87,7 +89,7 @@ export function AnalyticAccountFormPage() {
     <FormShell
       title={isNew ? 'New Analytic Account' : analytic?.name ?? 'Analytic Account'}
       status={!isNew && analytic ? (analytic.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
-      onBack={() => navigate('/analytics')}
+      onBack={goBack}
       actions={[
         ...(canArchive
           ? [

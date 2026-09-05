@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { toast } from '../stores/toastStore'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
 
@@ -11,6 +12,59 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
+})
+
+const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+
+// Per-action labels for the URL's last path segment, so "every action
+// performed" gets a toast without hand-adding one at every call site
+// (13+ list pages, ~10 form pages, payments, budgets...). Keyed by the verb
+// each router actually uses (see purchase.py/sales.py/payments.py/
+// journal_entries.py/budgets.py's /post,/confirm,/cancel,/archive,... routes).
+const ACTION_LABELS: Record<string, string> = {
+  post: 'Posted successfully',
+  confirm: 'Confirmed',
+  cancel: 'Cancelled — reversal entry created',
+  archive: 'Archived',
+  unarchive: 'Restored',
+  'reset-draft': 'Reset to draft',
+  'create-bill': 'Vendor bill created from purchase order',
+  'create-invoice': 'Invoice created from sales order',
+  revise: 'Budget revised',
+  pay: 'Payment submitted',
+  image: 'Image uploaded',
+  login: 'Welcome back',
+  logout: 'Logged out',
+}
+
+function describeMutationSuccess(method: string, url: string, data: unknown): string | null {
+  const path = url.replace(/^\/+/, '').split('?')[0]
+  if (path.startsWith('auth/')) {
+    if (path === 'auth/signup') return 'Account created — you can now log in'
+    return path === 'auth/logout' ? ACTION_LABELS.logout : null // login/refresh/forgot/reset keep their own inline UX
+  }
+
+  if (data && typeof data === 'object' && 'message' in (data as Record<string, unknown>)) {
+    const msg = (data as Record<string, unknown>).message
+    if (typeof msg === 'string') return msg
+  }
+
+  const last = path.split('/').filter(Boolean).pop() ?? ''
+  if (ACTION_LABELS[last]) return ACTION_LABELS[last]
+
+  if (method === 'delete') return 'Deleted'
+  if (method === 'patch' || method === 'put') return 'Changes saved'
+  if (method === 'post') return 'Created successfully'
+  return null
+}
+
+apiClient.interceptors.response.use((response) => {
+  const method = response.config.method?.toLowerCase() ?? ''
+  if (MUTATING_METHODS.has(method)) {
+    const message = describeMutationSuccess(method, response.config.url ?? '', response.data)
+    if (message) toast.success(message)
+  }
+  return response
 })
 
 // Design doc §7.1 / §9.3: a single in-flight refresh shared across
@@ -57,9 +111,20 @@ apiClient.interceptors.response.use(
         return apiClient(config)
       }
       // refresh itself failed — hard sign-out
+      toast.error('Session expired — please log in again')
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
+      return Promise.reject(error)
+    }
+
+    // Scoped to mutations, same as the success toast above: a failed
+    // background GET (react-query retry/refetch) would otherwise spam
+    // toasts on a flaky connection, and list/detail pages already render
+    // their own inline "Could not load data" state for reads.
+    const method = config?.method?.toLowerCase() ?? ''
+    if (!isAuthEndpoint && MUTATING_METHODS.has(method)) {
+      toast.error(getApiErrorMessage(error))
     }
     return Promise.reject(error)
   }

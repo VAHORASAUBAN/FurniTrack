@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useGoBack } from '../../hooks/useGoBack'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
 import { contactOptions } from '../../api/endpoints/contacts'
@@ -40,6 +41,7 @@ export function UserFormPage() {
   const isNew = id === 'new'
   const userId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/settings/users')
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -95,7 +97,7 @@ export function UserFormPage() {
       <FormShell
         title={existingUser.name}
         status={existingUser.is_active ? 'ACTIVE' : 'ARCHIVED'}
-        onBack={() => navigate('/settings/users')}
+        onBack={goBack}
         actions={[
           {
             label: existingUser.is_active ? 'Archive' : 'Unarchive',
@@ -137,7 +139,7 @@ export function UserFormPage() {
   return (
     <FormShell
       title="Create User"
-      onBack={() => navigate('/settings/users')}
+      onBack={goBack}
       actions={[
         {
           label: createMutation.isPending ? 'Creating…' : 'Create',

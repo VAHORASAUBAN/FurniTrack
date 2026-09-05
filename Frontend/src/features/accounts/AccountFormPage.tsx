@@ -13,6 +13,7 @@ import {
   updateAccount,
 } from '../../api/endpoints/accounts'
 import { FormShell } from '../../components/shared/FormShell'
+import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 import { ACCOUNT_TYPE_LABELS } from '../../types/account'
 
@@ -32,6 +33,7 @@ export function AccountFormPage() {
   const isNew = id === 'new'
   const accountId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/accounts')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -100,7 +102,7 @@ export function AccountFormPage() {
     <FormShell
       title={isNew ? 'New Account' : account?.name ?? 'Account'}
       status={!isNew && account ? (account.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
-      onBack={() => navigate('/accounts')}
+      onBack={goBack}
       actions={[
         ...(canArchive
           ? [

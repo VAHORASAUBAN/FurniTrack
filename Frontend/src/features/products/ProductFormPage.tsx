@@ -18,6 +18,7 @@ import {
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
+import { useGoBack } from '../../hooks/useGoBack'
 import { useAuthStore } from '../../stores/authStore'
 
 const moneyString = z
@@ -43,6 +44,7 @@ export function ProductFormPage() {
   const isNew = id === 'new'
   const productId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/products')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -115,7 +117,7 @@ export function ProductFormPage() {
     <FormShell
       title={isNew ? 'New Product' : product?.name ?? 'Product'}
       status={!isNew && product ? (product.is_active ? 'ACTIVE' : 'ARCHIVED') : undefined}
-      onBack={() => navigate('/products')}
+      onBack={goBack}
       actions={[
         ...(canArchive
           ? [

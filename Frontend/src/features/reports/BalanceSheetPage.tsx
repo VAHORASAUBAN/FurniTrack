@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, Download, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { getBalanceSheet } from '../../api/endpoints/reports'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 import type { AccountBalance } from '../../types/report'
 
 function Section({ title, rows, total }: { title: string; rows: AccountBalance[]; total: string }) {
@@ -45,6 +46,13 @@ export function BalanceSheetPage() {
             onChange={(e) => setAsOf(e.target.value)}
             className="rounded-md border border-[var(--color-rule-2)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           />
+          <button
+            type="button"
+            onClick={() => openPdf(`/reports/balance-sheet/pdf?as_of=${asOf}`)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+          >
+            <Download size={14} /> Download PDF
+          </button>
         </div>
       </div>
 

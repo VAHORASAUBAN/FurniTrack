@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  ArrowUpDown,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -13,6 +14,9 @@ import {
   Search,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { getApiErrorMessage } from '../../api/client'
+import { toast } from '../../stores/toastStore'
 import type { ListParams, Page } from '../../types/api'
 
 export interface Column<T> {
@@ -34,15 +38,15 @@ export interface KanbanColumn {
   label: string
 }
 
-export interface StatusFilterOption {
-  value: string
-  label: string
-}
-
 export interface KanbanConfig<T> {
   groupBy: (row: T) => string
   columns: KanbanColumn[]
   renderCard: (row: T) => ReactNode
+}
+
+export interface StatusFilterOption {
+  value: string
+  label: string
 }
 
 interface ListViewProps<T> {
@@ -70,7 +74,10 @@ interface ListViewProps<T> {
   dateRangeFilter?: { label?: string }
 }
 
-const EXPORT_PAGE_SIZE = 1000
+// The backend caps page_size at 100 (core/pagination.py) — export walks
+// pages rather than requesting one giant page, which would 422.
+const EXPORT_PAGE_SIZE = 100
+const EXPORT_MAX_PAGES = 40 // sane upper bound (4000 rows) on a runaway export
 
 function cellText<T>(col: Column<T>, row: T): string {
   if (col.csvValue) {
@@ -88,9 +95,13 @@ function toCsvField(value: string): string {
 /** Design doc §7.4 — the shared list screen: search, sort, pagination, New
  * button, and (when the module supports archive) a toggle for archived
  * records — plus CSV export and print, which every module gets for free
- * through this one component. Drives Contacts, Products, Chart of
- * Accounts, Journals, Analytic Accounts, Budgets, Users, and every
- * document/journal-entry/payment list. */
+ * through this one component. Every bit of this state (search, sort,
+ * filters, page, list/kanban) lives in the URL's query string rather than
+ * component state, so it survives navigating to a row's detail page and
+ * back, a refresh, or sharing the link — not just for the lifetime of the
+ * mounted component. Drives Contacts, Products, Chart of Accounts,
+ * Journals, Analytic Accounts, Budgets, Users, and every document/
+ * journal-entry/payment list. */
 export function ListView<T>({
   title,
   queryKey,
@@ -106,18 +117,35 @@ export function ListView<T>({
   statusFilter,
   dateRangeFilter,
 }: ListViewProps<T>) {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [sort, setSort] = useState<string | undefined>(undefined)
-  const [includeArchived, setIncludeArchived] = useState(false)
-  const [status, setStatus] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isExporting, setIsExporting] = useState(false)
+
+  const search = searchParams.get('q') ?? ''
+  const sort = searchParams.get('sort') ?? undefined
+  const status = searchParams.get('status') ?? ''
+  const dateFrom = searchParams.get('date_from') ?? ''
+  const dateTo = searchParams.get('date_to') ?? ''
+  const includeArchived = searchParams.get('archived') === '1'
+  const viewMode: 'list' | 'kanban' = searchParams.get('view') === 'kanban' ? 'kanban' : 'list'
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
+
   const isKanban = Boolean(kanban) && viewMode === 'kanban'
   const pageSize = isKanban ? 100 : 25
   const hasActiveFilters = Boolean(search || status || dateFrom || dateTo || includeArchived)
+
+  function updateParams(updates: Record<string, string | null>) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null || value === '') next.delete(key)
+          else next.set(key, value)
+        }
+        return next
+      },
+      { replace: true }
+    )
+  }
 
   const filterParams = {
     search: search || undefined,
@@ -135,26 +163,30 @@ export function ListView<T>({
   })
 
   function clearFilters() {
-    setSearch('')
-    setStatus('')
-    setDateFrom('')
-    setDateTo('')
-    setIncludeArchived(false)
-    setPage(1)
+    updateParams({ q: null, status: null, date_from: null, date_to: null, archived: null, page: null })
   }
 
   function toggleSort(key: string) {
-    setSort((prev) => (prev === key ? `-${key}` : prev === `-${key}` ? undefined : key))
-    setPage(1)
+    const next = sort === key ? `-${key}` : sort === `-${key}` ? null : key
+    updateParams({ sort: next, page: null })
   }
 
   async function handleExportCsv() {
     setIsExporting(true)
     try {
-      const result = await fetcher({ ...filterParams, page: 1, page_size: EXPORT_PAGE_SIZE })
+      const allItems: T[] = []
+      let currentPage = 1
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const result = await fetcher({ ...filterParams, page: currentPage, page_size: EXPORT_PAGE_SIZE })
+        allItems.push(...result.items)
+        const gotEverything = allItems.length >= result.total || result.items.length < EXPORT_PAGE_SIZE
+        if (gotEverything || currentPage >= EXPORT_MAX_PAGES) break
+        currentPage += 1
+      }
       const rows = [
         columns.map((c) => toCsvField(c.header)).join(','),
-        ...result.items.map((row) => columns.map((c) => toCsvField(cellText(c, row))).join(',')),
+        ...allItems.map((row) => columns.map((c) => toCsvField(cellText(c, row))).join(',')),
       ]
       const blob = new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
@@ -165,6 +197,9 @@ export function ListView<T>({
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      toast.success(`Exported ${allItems.length} record${allItems.length === 1 ? '' : 's'} to CSV`)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err))
     } finally {
       setIsExporting(false)
     }
@@ -189,10 +224,7 @@ export function ListView<T>({
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-3)]" />
           <input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => updateParams({ q: e.target.value, page: null })}
             placeholder={searchPlaceholder}
             className="w-full rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           />
@@ -202,10 +234,7 @@ export function ListView<T>({
             <input
               type="checkbox"
               checked={includeArchived}
-              onChange={(e) => {
-                setIncludeArchived(e.target.checked)
-                setPage(1)
-              }}
+              onChange={(e) => updateParams({ archived: e.target.checked ? '1' : null, page: null })}
               className="accent-[var(--color-accent)]"
             />
             Show archived
@@ -214,10 +243,7 @@ export function ListView<T>({
         {statusFilter && (
           <select
             value={status}
-            onChange={(e) => {
-              setStatus(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => updateParams({ status: e.target.value, page: null })}
             className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2.5 py-2 text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           >
             <option value="">{statusFilter.label ?? 'Status'}: All</option>
@@ -233,10 +259,7 @@ export function ListView<T>({
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => updateParams({ date_from: e.target.value, page: null })}
               title={`${dateRangeFilter.label ?? 'Date'} from`}
               className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2 py-[7px] text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
             />
@@ -244,10 +267,7 @@ export function ListView<T>({
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => updateParams({ date_to: e.target.value, page: null })}
               title={`${dateRangeFilter.label ?? 'Date'} to`}
               className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-2 py-[7px] text-sm text-[var(--color-ink-2)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
             />
@@ -268,7 +288,7 @@ export function ListView<T>({
             <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-0.5">
               <button
                 type="button"
-                onClick={() => setViewMode('list')}
+                onClick={() => updateParams({ view: null })}
                 aria-label="List view"
                 title="List view"
                 className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
@@ -281,7 +301,7 @@ export function ListView<T>({
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('kanban')}
+                onClick={() => updateParams({ view: 'kanban' })}
                 aria-label="Kanban view"
                 title="Kanban view"
                 className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
@@ -380,11 +400,17 @@ export function ListView<T>({
                       <button
                         type="button"
                         onClick={() => toggleSort(col.sortKey as string)}
-                        className="print:hidden inline-flex items-center gap-1 hover:text-[var(--color-ink)]"
+                        title="Click to sort"
+                        className={`print:hidden inline-flex items-center gap-1 transition-colors hover:text-[var(--color-accent)] ${
+                          sort === col.sortKey || sort === `-${col.sortKey}` ? 'text-[var(--color-accent)]' : ''
+                        }`}
                       >
                         {col.header}
-                        {sort === col.sortKey && <ChevronUp size={12} />}
-                        {sort === `-${col.sortKey}` && <ChevronDown size={12} />}
+                        {sort === col.sortKey && <ChevronUp size={13} />}
+                        {sort === `-${col.sortKey}` && <ChevronDown size={13} />}
+                        {sort !== col.sortKey && sort !== `-${col.sortKey}` && (
+                          <ArrowUpDown size={12} className="opacity-40" />
+                        )}
                       </button>
                     ) : null}
                     <span className={col.sortKey ? 'hidden print:inline' : undefined}>{col.header}</span>
@@ -433,14 +459,14 @@ export function ListView<T>({
           <div className="flex gap-2">
             <button
               disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => updateParams({ page: String(page - 1) })}
               className="inline-flex items-center gap-1 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 transition-colors hover:bg-[var(--color-paper-2)] disabled:opacity-40"
             >
               <ChevronLeft size={14} /> Previous
             </button>
             <button
               disabled={page >= data.total_pages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => updateParams({ page: String(page + 1) })}
               className="inline-flex items-center gap-1 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 transition-colors hover:bg-[var(--color-paper-2)] disabled:opacity-40"
             >
               Next <ChevronRight size={14} />

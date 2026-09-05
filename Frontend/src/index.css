@@ -184,6 +184,17 @@ h1, h2, h3, .font-display {
   background: transparent;
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Every ListView's Print button just calls window.print() - the shell
    (Sidebar/Topbar) hides itself via print:hidden, this covers the page
    level: white paper instead of the parchment background (real paper is

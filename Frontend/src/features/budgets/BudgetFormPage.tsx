@@ -19,6 +19,7 @@ import { contactOptions } from '../../api/endpoints/contacts'
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
 import { MoneyInput } from '../../components/shared/MoneyInput'
+import { useGoBack } from '../../hooks/useGoBack'
 import { formatMoney } from '../../lib/money'
 import { useAuthStore } from '../../stores/authStore'
 import { BudgetDrillDownModal } from './BudgetDrillDownModal'
@@ -45,6 +46,7 @@ export function BudgetFormPage() {
   const isNew = id === 'new'
   const budgetId = isNew ? null : Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/budgets')
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -160,7 +162,7 @@ export function BudgetFormPage() {
     <FormShell
       title={isNew ? 'New Budget' : budget?.name ?? 'Budget'}
       status={status}
-      onBack={() => navigate('/budgets')}
+      onBack={goBack}
       actions={actions}
     >
       {budget?.revises_budget_id && (

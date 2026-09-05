@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '../../api/client'
 import { getMyInvoice, payMyInvoice } from '../../api/endpoints/portal'
 import { FormShell } from '../../components/shared/FormShell'
 import { MoneyInput } from '../../components/shared/MoneyInput'
+import { useGoBack } from '../../hooks/useGoBack'
 import { formatMoney } from '../../lib/money'
 import { openPdf } from '../../lib/pdf'
 
@@ -17,6 +18,7 @@ export function PortalInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const invoiceId = Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack('/portal/invoices')
   const queryClient = useQueryClient()
   const [method, setMethod] = useState<'BANK' | 'CASH'>('BANK')
   const [amount, setAmount] = useState('0.00')
@@ -51,7 +53,7 @@ export function PortalInvoiceDetailPage() {
     <FormShell
       title={invoice.doc_number}
       status={isPaid ? 'PAID' : invoice.status}
-      onBack={() => navigate('/portal/invoices')}
+      onBack={goBack}
       actions={[
         { label: 'Print', onClick: () => openPdf(`/portal/invoices/${invoiceId}/pdf`), variant: 'secondary' },
       ]}

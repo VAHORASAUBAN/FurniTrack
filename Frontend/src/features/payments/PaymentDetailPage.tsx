@@ -4,6 +4,7 @@ import { getApiErrorMessage } from '../../api/client'
 import { cancelPayment, getPayment } from '../../api/endpoints/payments'
 import { FormShell } from '../../components/shared/FormShell'
 import { StatusPill } from '../../components/shared/StatusPill'
+import { useGoBack } from '../../hooks/useGoBack'
 import { documentPath, DOC_TYPE_LABEL } from '../../lib/documentRoutes'
 import { formatMoney } from '../../lib/money'
 import { useAuthStore } from '../../stores/authStore'
@@ -21,6 +22,7 @@ export function PaymentDetailPage({ backPath }: PaymentDetailPageProps) {
   const { id } = useParams<{ id: string }>()
   const paymentId = Number(id)
   const navigate = useNavigate()
+  const goBack = useGoBack(backPath)
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.user?.role)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -53,7 +55,7 @@ export function PaymentDetailPage({ backPath }: PaymentDetailPageProps) {
   }
 
   return (
-    <FormShell title={payment.payment_number} status={payment.status} onBack={() => navigate(backPath)} actions={actions}>
+    <FormShell title={payment.payment_number} status={payment.status} onBack={goBack} actions={actions}>
       <div className="grid grid-cols-4 gap-x-6 gap-y-4">
         <div>
           <div className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink-3)]">Partner</div>
