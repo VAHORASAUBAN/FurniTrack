@@ -7,7 +7,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { analyticAccountOptions } from '../../api/endpoints/analyticAccounts'
 import { getApiErrorMessage } from '../../api/client'
-import { cancelBudget, confirmBudget, createBudget, getBudget, updateBudget } from '../../api/endpoints/budgets'
+import {
+  cancelBudget,
+  confirmBudget,
+  createBudget,
+  getBudget,
+  reviseBudget,
+  updateBudget,
+} from '../../api/endpoints/budgets'
 import { contactOptions } from '../../api/endpoints/contacts'
 import { FormShell } from '../../components/shared/FormShell'
 import { Many2OneSelect } from '../../components/shared/Many2OneSelect'
@@ -99,6 +106,15 @@ export function BudgetFormPage() {
     onError: (err) => setServerError(getApiErrorMessage(err)),
   })
 
+  const reviseMutation = useMutation({
+    mutationFn: () => reviseBudget(budgetId as number),
+    onSuccess: (revised) => {
+      invalidate()
+      navigate(`/budgets/${revised.id}`)
+    },
+    onError: (err) => setServerError(getApiErrorMessage(err)),
+  })
+
   function onSave(values: FormValues) {
     setServerError(null)
     saveMutation.mutate(values)
@@ -125,6 +141,14 @@ export function BudgetFormPage() {
       disabled: confirmMutation.isPending,
     })
   }
+  if (!isNew && status === 'CONFIRMED') {
+    actions.push({
+      label: reviseMutation.isPending ? 'Revising…' : 'Revise',
+      onClick: () => reviseMutation.mutate(),
+      variant: 'secondary' as const,
+      disabled: reviseMutation.isPending,
+    })
+  }
   if (!isNew && status !== 'CANCELLED' && canManage) {
     actions.push({
       label: cancelMutation.isPending ? 'Cancelling…' : 'Cancel', onClick: () => cancelMutation.mutate(),
@@ -139,6 +163,15 @@ export function BudgetFormPage() {
       onBack={() => navigate('/budgets')}
       actions={actions}
     >
+      {budget?.revises_budget_id && (
+        <button
+          onClick={() => navigate(`/budgets/${budget.revises_budget_id}`)}
+          className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+        >
+          ← View original Budget
+        </button>
+      )}
+
       <div className="grid grid-cols-4 gap-x-6 gap-y-4 mb-6">
         <div className="col-span-2">
           <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Budget Name</label>

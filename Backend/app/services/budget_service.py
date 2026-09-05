@@ -1,6 +1,4 @@
-"""Budget service — design doc §3 item 7. Revise is deliberately not
-implemented (schema-now/UI-later decision) — `status` only ever moves
-DRAFT -> CONFIRMED -> CANCELLED here."""
+"""Budget service — design doc §3 item 7, §5.7."""
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -67,6 +65,36 @@ def cancel_budget(db: Session, budget: Budget) -> Budget:
     budget.status = BudgetStatus.CANCELLED
     db.flush()
     return budget
+
+
+def revise_budget(db: Session, budget: Budget) -> Budget:
+    """Design doc §5.7: copies the budget as a new DRAFT (name + " Revised",
+    same period and lines as a starting point to edit from), points the copy
+    back at the original via revises_budget_id, and flips the original to
+    REVISED so it reads as superseded rather than just quietly abandoned."""
+    if budget.status != BudgetStatus.CONFIRMED:
+        raise ConflictError("Only a confirmed budget can be revised.", code="NOT_CONFIRMED")
+
+    revised = Budget(
+        name=f"{budget.name} Revised",
+        start_date=budget.start_date,
+        end_date=budget.end_date,
+        responsible_contact_id=budget.responsible_contact_id,
+        status=BudgetStatus.DRAFT,
+        revises_budget_id=budget.id,
+    )
+    revised.lines = [
+        BudgetLine(
+            analytic_account_id=line.analytic_account_id,
+            analytic_type=line.analytic_type,
+            planned_amount=line.planned_amount,
+        )
+        for line in budget.lines
+    ]
+    db.add(revised)
+    budget.status = BudgetStatus.REVISED
+    db.flush()
+    return revised
 
 
 def attach_achieved(db: Session, budget: Budget) -> Budget:

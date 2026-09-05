@@ -174,3 +174,48 @@ def test_budget_confirm_lifecycle(client, admin_auth_header):
 
     cancel_resp = client.post(f"/api/v1/budgets/{budget['id']}/cancel", headers=admin_auth_header)
     assert cancel_resp.json()["status"] == "CANCELLED"
+
+
+def test_budget_revise_creates_a_linked_draft_and_supersedes_the_original(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    analytic = client.post(
+        "/api/v1/analytic-accounts", json={"name": f"Revise {suffix}", "analytic_type": "INCOME"},
+        headers=admin_auth_header,
+    ).json()
+    original = client.post(
+        "/api/v1/budgets",
+        json={
+            "name": f"Original {suffix}", "start_date": "2026-06-01", "end_date": "2026-06-30",
+            "lines": [{"analytic_account_id": analytic["id"], "analytic_type": "INCOME", "planned_amount": "1000.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    # A draft can't be revised yet — only a confirmed one.
+    draft_revise_resp = client.post(f"/api/v1/budgets/{original['id']}/revise", headers=admin_auth_header)
+    assert draft_revise_resp.status_code == 409
+    assert draft_revise_resp.json()["error"]["code"] == "NOT_CONFIRMED"
+
+    client.post(f"/api/v1/budgets/{original['id']}/confirm", headers=admin_auth_header)
+
+    revise_resp = client.post(f"/api/v1/budgets/{original['id']}/revise", headers=admin_auth_header)
+    assert revise_resp.status_code == 201
+    revised = revise_resp.json()
+    assert revised["name"] == f"Original {suffix} Revised"
+    assert revised["status"] == "DRAFT"
+    assert revised["revises_budget_id"] == original["id"]
+    assert revised["lines"][0]["analytic_account_id"] == analytic["id"]
+    assert revised["lines"][0]["planned_amount"] == "1000.00"
+
+    # The original is superseded, not silently left CONFIRMED.
+    original_after = client.get(f"/api/v1/budgets/{original['id']}", headers=admin_auth_header).json()
+    assert original_after["status"] == "REVISED"
+
+    # The new one is a real, independently editable draft.
+    edit_resp = client.patch(
+        f"/api/v1/budgets/{revised['id']}",
+        json={"lines": [{"analytic_account_id": analytic["id"], "analytic_type": "INCOME", "planned_amount": "1500.00"}]},
+        headers=admin_auth_header,
+    )
+    assert edit_resp.status_code == 200
+    assert edit_resp.json()["lines"][0]["planned_amount"] == "1500.00"

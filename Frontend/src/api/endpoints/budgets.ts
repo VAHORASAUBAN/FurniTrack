@@ -31,3 +31,8 @@ export async function cancelBudget(id: number): Promise<Budget> {
   const resp = await apiClient.post<Budget>(`/budgets/${id}/cancel`)
   return resp.data
 }
+
+export async function reviseBudget(id: number): Promise<Budget> {
+  const resp = await apiClient.post<Budget>(`/budgets/${id}/revise`)
+  return resp.data
+}

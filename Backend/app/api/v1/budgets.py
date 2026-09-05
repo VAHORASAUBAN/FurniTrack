@@ -58,6 +58,13 @@ def confirm_budget(budget_id: int, db: DbSession):
     return budget_service.attach_achieved(db, budget)
 
 
+@router.post("/{budget_id}/revise", response_model=BudgetOut, status_code=status.HTTP_201_CREATED)
+def revise_budget(budget_id: int, db: DbSession):
+    budget = master_service.get_record(db, Budget, budget_id, not_found_message="Budget not found.")
+    revised = budget_service.revise_budget(db, budget)
+    return budget_service.attach_achieved(db, revised)
+
+
 @router.post(
     "/{budget_id}/cancel", response_model=BudgetOut, dependencies=[Depends(require_roles(UserRole.ADMIN))]
 )
