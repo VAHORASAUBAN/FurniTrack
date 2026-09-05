@@ -4,16 +4,26 @@ login_id: 6-12 chars per the wireframe's stated credential rule.
 password: minimum 8 chars (§9.3 — the wireframe's 6-12 rule is for login_id,
 not password).
 """
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.enums import UserRole
 
 
 class SignupRequest(BaseModel):
+    """The wireframe's Sign Up page collects exactly these four fields —
+    no Name — so `name` isn't part of this shape at all; auth_service
+    defaults it from `login_id` since the User row itself still requires one."""
+
     login_id: str = Field(min_length=6, max_length=12)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    name: str = Field(min_length=1, max_length=128)
+    password_confirm: str
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.password != self.password_confirm:
+            raise ValueError("Passwords do not match.")
+        return self
 
 
 class LoginRequest(BaseModel):

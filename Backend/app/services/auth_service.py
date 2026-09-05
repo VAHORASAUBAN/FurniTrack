@@ -32,11 +32,14 @@ def signup(db: Session, payload: SignupRequest) -> User:
 
     # Design decision (§00): self-signup creates ACCOUNTANT users only —
     # portal users are provisioned from a Contact, never from open signup.
+    # The wireframe's Sign Up page never collects a name, but `user.name`
+    # is NOT NULL — login_id is the placeholder until an Admin (or a future
+    # profile screen) sets a real one via the Create User / user-management path.
     user = User(
         login_id=payload.login_id,
         email=payload.email,
         password_hash=hash_password(payload.password),
-        name=payload.name,
+        name=payload.login_id,
         role=UserRole.ACCOUNTANT,
         contact_id=None,
         is_active=True,

@@ -1,26 +1,30 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
-import { login } from '../../api/endpoints/auth'
 import { getApiErrorMessage } from '../../api/client'
-import { useAuthStore } from '../../stores/authStore'
+import { signup } from '../../api/endpoints/auth'
 
-const schema = z.object({
-  login_id: z.string().min(1, 'Login ID is required'),
-  password: z.string().min(1, 'Password is required'),
-})
+// Matches the wireframe's stated Sign Up rules exactly: login_id 6-12
+// chars, email uniqueness is checked server-side (409 on conflict).
+const schema = z
+  .object({
+    login_id: z.string().min(6, 'Login ID must be 6-12 characters').max(12, 'Login ID must be 6-12 characters'),
+    email: z.string().email('Enter a valid email'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password_confirm: z.string(),
+  })
+  .refine((v) => v.password === v.password_confirm, {
+    message: 'Passwords do not match',
+    path: ['password_confirm'],
+  })
 type FormValues = z.infer<typeof schema>
 
-export function LoginPage() {
+export function SignUpPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const justSignedUp = Boolean((location.state as { justSignedUp?: boolean } | null)?.justSignedUp)
-  const setSession = useAuthStore((s) => s.setSession)
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [showForgotNote, setShowForgotNote] = useState(false)
 
   const {
     register,
@@ -32,9 +36,8 @@ export function LoginPage() {
     setServerError(null)
     setSubmitting(true)
     try {
-      const resp = await login(values)
-      setSession(resp.access_token, resp.refresh_token, resp.user)
-      navigate(resp.user.role === 'PORTAL' ? '/portal' : '/', { replace: true })
+      await signup(values)
+      navigate('/login', { replace: true, state: { justSignedUp: true } })
     } catch (err) {
       setServerError(getApiErrorMessage(err))
     } finally {
@@ -47,14 +50,8 @@ export function LoginPage() {
       <div className="w-full max-w-sm rounded-xl border border-[var(--color-rule)] bg-[var(--color-surface)] p-8 shadow-sm">
         <div className="mb-6 text-center">
           <div className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">Urban Furniture</div>
-          <div className="text-sm text-[var(--color-ink-2)]">Accounting System</div>
+          <div className="text-sm text-[var(--color-ink-2)]">Create your Accountant account</div>
         </div>
-
-        {justSignedUp && (
-          <div className="mb-4 rounded-md bg-[var(--color-success-bg)] px-3 py-2 text-sm text-[var(--color-success)]">
-            Account created — sign in below.
-          </div>
-        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
@@ -62,9 +59,20 @@ export function LoginPage() {
             <input
               {...register('login_id')}
               autoFocus
+              placeholder="6-12 characters"
               className="w-full rounded-md border border-[var(--color-rule-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
             />
             {errors.login_id && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.login_id.message}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Email ID</label>
+            <input
+              type="email"
+              {...register('email')}
+              className="w-full rounded-md border border-[var(--color-rule-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+            />
+            {errors.email && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -75,6 +83,18 @@ export function LoginPage() {
               className="w-full rounded-md border border-[var(--color-rule-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
             />
             {errors.password && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.password.message}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--color-ink)]">Re-Enter Password</label>
+            <input
+              type="password"
+              {...register('password_confirm')}
+              className="w-full rounded-md border border-[var(--color-rule-2)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+            />
+            {errors.password_confirm && (
+              <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.password_confirm.message}</p>
+            )}
           </div>
 
           {serverError && (
@@ -88,31 +108,15 @@ export function LoginPage() {
             disabled={submitting}
             className="mt-2 rounded-md bg-[var(--color-accent)] py-2 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
           >
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? 'Creating account…' : 'Sign Up'}
           </button>
         </form>
 
-        <div className="mt-4 flex items-center justify-center gap-3 text-xs">
-          <button
-            type="button"
-            onClick={() => setShowForgotNote((v) => !v)}
-            className="font-medium text-[var(--color-ink-2)] hover:text-[var(--color-ink)]"
-          >
-            Forgot Password
-          </button>
-          <span className="text-[var(--color-rule-2)]">|</span>
-          <Link to="/signup" className="font-medium text-[var(--color-accent)] hover:underline">
-            Sign Up
-          </Link>
-        </div>
-        {showForgotNote && (
-          <p className="mt-2 text-center text-xs text-[var(--color-ink-3)]">
-            Password reset isn't available yet — contact your Admin to reset it.
-          </p>
-        )}
-
         <p className="mt-5 text-center text-xs text-[var(--color-ink-3)]">
-          Seeded admin: <code>admin</code> / <code>Admin@12345</code>
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-[var(--color-accent)] hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Tags,
   Target,
+  UserCog,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -67,9 +68,19 @@ const GROUPS: NavGroup[] = [
   },
 ]
 
+// Admin-only — matches the wireframe's "Create User" screen; kept out of
+// GROUPS so an Accountant never sees a link to a page RequireRole would
+// bounce them straight back out of.
+const SETTINGS_GROUP: NavGroup = {
+  label: 'Settings',
+  items: [{ to: '/settings/users', label: 'Users', icon: UserCog }],
+}
+
 export function Sidebar() {
   const role = useAuthStore((s) => s.user?.role)
   if (role === 'PORTAL') return null // portal users get their own minimal shell
+
+  const groups = role === 'ADMIN' ? [...GROUPS, SETTINGS_GROUP] : GROUPS
 
   return (
     <aside className="flex w-60 shrink-0 flex-col gap-6 border-r border-[var(--color-rule)] bg-[var(--color-surface)] px-4 py-5 overflow-y-auto">
@@ -89,7 +100,7 @@ export function Sidebar() {
         <LayoutDashboard size={17} /> Dashboard
       </NavLink>
 
-      {GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5">
           <div className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">
             {group.label}

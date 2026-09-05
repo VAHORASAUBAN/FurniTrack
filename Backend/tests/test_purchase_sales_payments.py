@@ -238,7 +238,10 @@ def test_accountant_can_run_the_full_purchase_flow_but_not_cancel(client, admin_
     suffix = uuid.uuid4().hex[:8]
     client.post(
         "/api/v1/auth/signup",
-        json={"login_id": f"acct{suffix}", "email": f"acct{suffix}@t.co", "password": "Test@12345", "name": "Acct"},
+        json={
+            "login_id": f"acct{suffix}", "email": f"acct{suffix}@t.co",
+            "password": "Test@12345", "password_confirm": "Test@12345",
+        },
     )
     login = client.post("/api/v1/auth/login", json={"login_id": f"acct{suffix}", "password": "Test@12345"})
     accountant_header = {"Authorization": f"Bearer {login.json()['access_token']}"}

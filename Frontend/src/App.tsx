@@ -6,6 +6,7 @@ import { AccountListPage } from './features/accounts/AccountListPage'
 import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
 import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
 import { LoginPage } from './features/auth/LoginPage'
+import { SignUpPage } from './features/auth/SignUpPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
 import { ContactListPage } from './features/contacts/ContactListPage'
 import { JournalEntryFormPage } from './features/journalEntries/JournalEntryFormPage'
@@ -22,6 +23,8 @@ import { CustomerInvoiceFormPage } from './features/sales/CustomerInvoiceFormPag
 import { CustomerInvoiceListPage } from './features/sales/CustomerInvoiceListPage'
 import { SalesOrderFormPage } from './features/sales/SalesOrderFormPage'
 import { SalesOrderListPage } from './features/sales/SalesOrderListPage'
+import { UserFormPage } from './features/users/UserFormPage'
+import { UserListPage } from './features/users/UserListPage'
 import { useSessionBootstrap } from './hooks/useSessionBootstrap'
 import { RequireRole } from './router/RequireRole'
 
@@ -38,6 +41,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
 
         <Route element={<RequireRole allow={[...STAFF]} />}>
           <Route element={<AppShell />}>
@@ -78,6 +82,11 @@ function App() {
             <Route path="/reports/balance-sheet" element={<ComingSoon title="Balance Sheet" />} />
             <Route path="/reports/profit-loss" element={<ComingSoon title="Profit & Loss" />} />
             <Route path="/reports/budget" element={<ComingSoon title="Budget Report" />} />
+
+            <Route element={<RequireRole allow={['ADMIN']} />}>
+              <Route path="/settings/users" element={<UserListPage />} />
+              <Route path="/settings/users/:id" element={<UserFormPage />} />
+            </Route>
           </Route>
         </Route>
 

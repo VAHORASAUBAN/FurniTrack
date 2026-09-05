@@ -21,7 +21,7 @@ def new_accountant(client):
 
     resp = client.post(
         "/api/v1/auth/signup",
-        json={"login_id": login_id, "email": email, "password": password, "name": "Test User"},
+        json={"login_id": login_id, "email": email, "password": password, "password_confirm": password},
     )
     assert resp.status_code == 201, resp.text
     user_id = resp.json()["id"]
@@ -53,7 +53,7 @@ def test_signup_duplicate_login_id_returns_409(client, new_accountant):
             "login_id": new_accountant["login_id"],
             "email": f"other_{uuid.uuid4().hex[:6]}@example.com",
             "password": "AnotherPass1",
-            "name": "Someone Else",
+            "password_confirm": "AnotherPass1",
         },
     )
     assert resp.status_code == 409
@@ -63,11 +63,28 @@ def test_signup_duplicate_login_id_returns_409(client, new_accountant):
 def test_signup_short_login_id_returns_422(client):
     resp = client.post(
         "/api/v1/auth/signup",
-        json={"login_id": "ab", "email": "x@example.com", "password": "Passw0rd1", "name": "X"},
+        json={"login_id": "ab", "email": "x@example.com", "password": "Passw0rd1", "password_confirm": "Passw0rd1"},
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
     assert resp.json()["error"]["details"][0]["field"] == "login_id"
+
+
+def test_signup_mismatched_passwords_returns_422(client):
+    resp = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "login_id": f"t{uuid.uuid4().hex[:6]}", "email": f"{uuid.uuid4().hex[:6]}@example.com",
+            "password": "Passw0rd1", "password_confirm": "Different1",
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_signup_defaults_name_to_login_id(client, new_accountant):
+    resp = client.get("/api/v1/auth/me", headers=_auth_header(client, new_accountant))
+    assert resp.json()["name"] == new_accountant["login_id"]
 
 
 def test_login_wrong_password_returns_401_generic_message(client, new_accountant):

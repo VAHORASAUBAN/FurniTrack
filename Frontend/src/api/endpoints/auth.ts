@@ -6,6 +6,13 @@ export interface LoginInput {
   password: string
 }
 
+export interface SignupInput {
+  login_id: string
+  email: string
+  password: string
+  password_confirm: string
+}
+
 export interface TokenResponse {
   access_token: string
   refresh_token: string
@@ -15,6 +22,11 @@ export interface TokenResponse {
 
 export async function login(input: LoginInput): Promise<TokenResponse> {
   const resp = await apiClient.post<TokenResponse>('/auth/login', input)
+  return resp.data
+}
+
+export async function signup(input: SignupInput): Promise<CurrentUser> {
+  const resp = await apiClient.post<CurrentUser>('/auth/signup', input)
   return resp.data
 }
 
