@@ -45,7 +45,7 @@ def list_payments(
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(Payment.payment_number.ilike(like))
-    query = apply_sort(query, params.sort, Payment, SORT_FIELDS | {"payment_date"}, "-payment_date")
+    query = apply_sort(query, params.sort, Payment, SORT_FIELDS | {"payment_date", "updated_at"}, "-updated_at")
     items, total = paginate(query, params)
     for item in items:
         payment_service.attach_display_fields(item)

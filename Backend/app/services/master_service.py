@@ -23,7 +23,7 @@ def list_records(
     *,
     search_fields: list[str] = (),
     sort_fields: set[str] = frozenset(),
-    default_sort: str = "id",
+    default_sort: str = "-updated_at",
     exact_filters: dict[str, Any] | None = None,
     date_range: tuple[str, date | None, date | None] | None = None,
 ) -> tuple[list, int]:

@@ -12,7 +12,7 @@ from app.schemas.journal import JournalCreate, JournalOut, JournalUpdate
 from app.services import master_service
 
 SEARCH_FIELDS = ["code", "name"]
-SORT_FIELDS = {"code", "name", "journal_type"}
+SORT_FIELDS = {"code", "name", "journal_type", "updated_at"}
 
 router = APIRouter(
     prefix="/journals",
@@ -26,7 +26,7 @@ def list_journals(
     db: DbSession, params: PageParams = Depends(page_params), journal_type: JournalType | None = Query(default=None)
 ):
     items, total = master_service.list_records(
-        db, Journal, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="code",
+        db, Journal, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-updated_at",
         exact_filters={"journal_type": journal_type},
     )
     return Page(items=items, page=params.page, page_size=params.page_size,

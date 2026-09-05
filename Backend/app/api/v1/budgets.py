@@ -14,7 +14,7 @@ from app.schemas.common import Page
 from app.services import budget_service, master_service
 
 SEARCH_FIELDS = ["name"]
-SORT_FIELDS = {"name", "start_date", "end_date", "status"}
+SORT_FIELDS = {"name", "start_date", "end_date", "status", "updated_at"}
 
 router = APIRouter(
     prefix="/budgets",
@@ -32,7 +32,7 @@ def list_budgets(
     date_to: date | None = Query(default=None),
 ):
     items, total = master_service.list_records(
-        db, Budget, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-start_date",
+        db, Budget, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-updated_at",
         exact_filters={"status": status}, date_range=("start_date", date_from, date_to),
     )
     for item in items:

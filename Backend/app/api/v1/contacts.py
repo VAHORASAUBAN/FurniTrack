@@ -30,7 +30,7 @@ def list_contacts(db: DbSession, params: PageParams = Depends(page_params)):
         db, Contact, params,
         search_fields=contact_service.SEARCH_FIELDS,
         sort_fields=contact_service.SORT_FIELDS,
-        default_sort="name",
+        default_sort="-updated_at",
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))

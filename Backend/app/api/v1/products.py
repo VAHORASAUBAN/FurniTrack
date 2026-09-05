@@ -19,7 +19,7 @@ from app.schemas.product import (
 from app.services import master_service
 
 SEARCH_FIELDS = ["name"]
-SORT_FIELDS = {"name", "product_type"}
+SORT_FIELDS = {"name", "product_type", "updated_at"}
 
 router = APIRouter(
     prefix="/products",
@@ -37,7 +37,7 @@ category_router = APIRouter(
 @router.get("", response_model=Page[ProductOut])
 def list_products(db: DbSession, params: PageParams = Depends(page_params)):
     items, total = master_service.list_records(
-        db, Product, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="name"
+        db, Product, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-updated_at"
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))
@@ -74,7 +74,7 @@ def unarchive_product(product_id: int, db: DbSession):
 @category_router.get("", response_model=Page[ProductCategoryOut])
 def list_categories(db: DbSession, params: PageParams = Depends(page_params)):
     items, total = master_service.list_records(
-        db, ProductCategory, params, search_fields=["name"], sort_fields={"name"}, default_sort="name"
+        db, ProductCategory, params, search_fields=["name"], sort_fields={"name", "updated_at"}, default_sort="-updated_at"
     )
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))

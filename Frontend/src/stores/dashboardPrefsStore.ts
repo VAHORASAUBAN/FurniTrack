@@ -28,46 +28,52 @@ const STORAGE_KEY = 'uf_dashboard_widgets'
 // is remembered by key rather than by "which are shown" so a future new
 // widget defaults to visible for people who already have a saved prefs
 // blob, instead of silently vanishing until they notice and re-enable it.
-function loadHidden(): Set<DashboardWidget> {
+function loadHidden(): DashboardWidget[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return new Set()
+    if (!stored) return []
     const parsed = JSON.parse(stored) as unknown
-    if (!Array.isArray(parsed)) return new Set()
-    return new Set(parsed.filter((w): w is DashboardWidget => ALL_WIDGETS.includes(w as DashboardWidget)))
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((w): w is DashboardWidget => ALL_WIDGETS.includes(w as DashboardWidget))
   } catch {
-    return new Set()
+    return []
   }
 }
 
-function persistHidden(hidden: Set<DashboardWidget>) {
+function persistHidden(hidden: DashboardWidget[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...hidden]))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hidden))
   } catch {
     // private-browsing / storage-blocked — just loses persistence across reloads
   }
 }
 
 interface DashboardPrefsState {
-  hidden: Set<DashboardWidget>
-  isVisible: (widget: DashboardWidget) => boolean
+  /** Plain array, not a Set - kept as the actual piece of state a
+   * component selects (`useDashboardPrefsStore((s) => s.hidden)`), so a
+   * toggle's `set()` call produces a new array reference the selector can
+   * see change. A stable-reference helper method (closing over `get()`
+   * instead of taking `hidden` as an argument) looks correct but never
+   * triggers a re-render, since zustand only re-renders a component when
+   * the exact value it selected changes - the "hidden hook state" bug that
+   * broke this the first time. */
+  hidden: DashboardWidget[]
   toggle: (widget: DashboardWidget) => void
   resetToDefault: () => void
 }
 
-export const useDashboardPrefsStore = create<DashboardPrefsState>((set, get) => ({
+export const useDashboardPrefsStore = create<DashboardPrefsState>((set) => ({
   hidden: loadHidden(),
-  isVisible: (widget) => !get().hidden.has(widget),
   toggle: (widget) =>
     set((state) => {
-      const next = new Set(state.hidden)
-      if (next.has(widget)) next.delete(widget)
-      else next.add(widget)
+      const next = state.hidden.includes(widget)
+        ? state.hidden.filter((w) => w !== widget)
+        : [...state.hidden, widget]
       persistHidden(next)
       return { hidden: next }
     }),
   resetToDefault: () => {
-    persistHidden(new Set())
-    set({ hidden: new Set() })
+    persistHidden([])
+    set({ hidden: [] })
   },
 }))

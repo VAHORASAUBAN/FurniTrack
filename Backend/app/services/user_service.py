@@ -12,7 +12,7 @@ from app.models import Contact, User
 from app.models.enums import UserRole
 
 SEARCH_FIELDS = ["name", "login_id", "email"]
-SORT_FIELDS = {"name", "login_id", "role"}
+SORT_FIELDS = {"name", "login_id", "role", "updated_at"}
 
 
 def list_users(db: Session, params: PageParams, *, role: UserRole | None = None) -> tuple[list[User], int]:
@@ -24,7 +24,7 @@ def list_users(db: Session, params: PageParams, *, role: UserRole | None = None)
         query = query.filter(or_(*(getattr(User, f).ilike(like) for f in SEARCH_FIELDS)))
     if role is not None:
         query = query.filter(User.role == role)
-    query = apply_sort(query, params.sort, User, SORT_FIELDS, "name")
+    query = apply_sort(query, params.sort, User, SORT_FIELDS, "-updated_at")
     return paginate(query, params)
 
 

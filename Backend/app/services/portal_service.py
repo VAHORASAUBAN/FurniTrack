@@ -19,7 +19,7 @@ from app.models.enums import DocType, PaymentMethod, PaymentType
 from app.services import payment_service
 
 SEARCH_FIELDS = ["doc_number", "reference"]
-SORT_FIELDS = {"doc_number", "doc_date", "status"}
+SORT_FIELDS = {"doc_number", "doc_date", "status", "updated_at"}
 
 
 def list_own_invoices(db: Session, user: User, params: PageParams) -> tuple[list[Document], int]:
@@ -27,7 +27,7 @@ def list_own_invoices(db: Session, user: User, params: PageParams) -> tuple[list
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(or_(*(getattr(Document, f).ilike(like) for f in SEARCH_FIELDS)))
-    query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date"}, "-doc_date")
+    query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date", "updated_at"}, "-updated_at")
     return paginate(query, params)
 
 

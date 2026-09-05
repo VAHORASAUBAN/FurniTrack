@@ -22,7 +22,7 @@ from app.models.enums import UserRole
 from app.services import master_service
 
 SEARCH_FIELDS = ["name", "email", "mobile"]
-SORT_FIELDS = {"name", "created_at", "contact_type"}
+SORT_FIELDS = {"name", "created_at", "updated_at", "contact_type"}
 
 
 def _slugify_login_id(email: str) -> str:

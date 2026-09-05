@@ -58,7 +58,7 @@ def _list(
         query = query.filter(Document.doc_date >= date_from)
     if date_to is not None:
         query = query.filter(Document.doc_date <= date_to)
-    query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date"}, "-doc_date")
+    query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date", "updated_at"}, "-updated_at")
     items, total = paginate(query, params)
     for item in items:
         document_service.attach_balance(db, item)

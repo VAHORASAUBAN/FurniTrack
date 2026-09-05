@@ -10,7 +10,7 @@ from app.schemas.common import Page
 from app.services import master_service
 
 SEARCH_FIELDS = ["name"]
-SORT_FIELDS = {"name", "analytic_type"}
+SORT_FIELDS = {"name", "analytic_type", "updated_at"}
 
 router = APIRouter(
     prefix="/analytic-accounts",
@@ -24,7 +24,7 @@ def list_analytic_accounts(
     db: DbSession, params: PageParams = Depends(page_params), analytic_type: AnalyticType | None = Query(default=None)
 ):
     items, total = master_service.list_records(
-        db, AnalyticAccount, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="name",
+        db, AnalyticAccount, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-updated_at",
         exact_filters={"analytic_type": analytic_type},
     )
     return Page(items=items, page=params.page, page_size=params.page_size,

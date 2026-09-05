@@ -16,7 +16,7 @@ from app.schemas.journal_entry import JournalEntryCreate, JournalEntryOut, Journ
 from app.services import journal_entry_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["entry_number", "reference"]
-SORT_FIELDS = {"entry_number", "entry_date", "status"}
+SORT_FIELDS = {"entry_number", "entry_date", "status", "updated_at"}
 
 router = APIRouter(
     prefix="/journal-entries",
@@ -34,7 +34,7 @@ def list_journal_entries(
     date_to: date | None = Query(default=None),
 ):
     items, total = master_service.list_records(
-        db, JournalEntry, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-entry_date",
+        db, JournalEntry, params, search_fields=SEARCH_FIELDS, sort_fields=SORT_FIELDS, default_sort="-updated_at",
         exact_filters={"status": status}, date_range=("entry_date", date_from, date_to),
     )
     return Page(items=items, page=params.page, page_size=params.page_size,

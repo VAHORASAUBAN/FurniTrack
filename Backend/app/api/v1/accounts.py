@@ -24,7 +24,7 @@ def list_accounts(
         db, ChartOfAccount, params,
         search_fields=account_service.SEARCH_FIELDS,
         sort_fields=account_service.SORT_FIELDS,
-        default_sort="code",
+        default_sort="-updated_at",
         exact_filters={"account_type": account_type},
     )
     return Page(items=items, page=params.page, page_size=params.page_size,

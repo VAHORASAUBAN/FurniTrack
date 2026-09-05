@@ -56,9 +56,10 @@ const SECTION_WIDGETS: DashboardWidget[] = ['customer_invoices_breakdown', 'vend
 function CustomizeMenu() {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const isVisible = useDashboardPrefsStore((s) => s.isVisible)
+  const hidden = useDashboardPrefsStore((s) => s.hidden)
   const toggle = useDashboardPrefsStore((s) => s.toggle)
   const resetToDefault = useDashboardPrefsStore((s) => s.resetToDefault)
+  const isVisible = (w: DashboardWidget) => !hidden.includes(w)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -123,7 +124,8 @@ function CustomizeMenu() {
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const isVisible = useDashboardPrefsStore((s) => s.isVisible)
+  const hidden = useDashboardPrefsStore((s) => s.hidden)
+  const isVisible = (w: DashboardWidget) => !hidden.includes(w)
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,

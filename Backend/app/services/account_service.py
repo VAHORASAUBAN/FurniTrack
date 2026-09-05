@@ -11,7 +11,7 @@ from app.core.exceptions import ConflictError
 from app.models import ChartOfAccount
 
 SEARCH_FIELDS = ["code", "name"]
-SORT_FIELDS = {"code", "name", "account_type"}
+SORT_FIELDS = {"code", "name", "account_type", "updated_at"}
 
 
 def _check_single_flag_holder(db: Session, *, exclude_id: int | None, is_receivable: bool | None, is_payable: bool | None):
