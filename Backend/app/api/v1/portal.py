@@ -13,7 +13,7 @@ from app.schemas.common import Page
 from app.schemas.document import DocumentOut
 from app.schemas.payment import PaymentOut
 from app.schemas.portal import PortalPaymentIn
-from app.services import document_service, pdf_service, portal_service
+from app.services import document_service, payment_service, pdf_service, portal_service
 
 router = APIRouter(
     prefix="/portal",
@@ -39,9 +39,10 @@ def get_my_invoice(invoice_id: int, db: DbSession, user: CurrentUser):
 
 @router.post("/invoices/{invoice_id}/pay", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
 def pay_my_invoice(invoice_id: int, payload: PortalPaymentIn, db: DbSession, user: CurrentUser):
-    return portal_service.pay_own_invoice(
+    payment = portal_service.pay_own_invoice(
         db, user, invoice_id, method=payload.method, amount=payload.amount, payment_date=payload.payment_date
     )
+    return payment_service.attach_display_fields(payment)
 
 
 @router.get("/invoices/{invoice_id}/pdf")

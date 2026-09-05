@@ -1,8 +1,8 @@
 import { apiClient } from '../client'
 import type { ListParams, Page } from '../../types/api'
-import type { DocumentOutstanding, Payment, PaymentInput } from '../../types/payment'
+import type { DocumentOutstanding, Payment, PaymentInput, PaymentType } from '../../types/payment'
 
-export async function listPayments(params: ListParams): Promise<Page<Payment>> {
+export async function listPayments(params: ListParams & { payment_type?: PaymentType }): Promise<Page<Payment>> {
   const resp = await apiClient.get<Page<Payment>>('/payments', { params })
   return resp.data
 }

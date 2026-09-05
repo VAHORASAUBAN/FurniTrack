@@ -1,13 +1,13 @@
 """Payment router — design doc §5.6. Creating a payment posts it
 immediately (no draft stage) — see payment_service's module docstring."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import text
 
 from app.core.deps import CurrentUser, DbSession, require_roles
 from app.core.exceptions import NotFoundError
 from app.core.pagination import PageParams, apply_sort, page_params, paginate, total_pages
 from app.models import Payment
-from app.models.enums import UserRole
+from app.models.enums import PaymentType, UserRole
 from app.schemas.common import Page
 from app.schemas.payment import DocumentOutstandingOut, PaymentCreate, PaymentOut
 from app.services import master_service, payment_service
@@ -23,25 +23,31 @@ router = APIRouter(
 
 
 @router.get("", response_model=Page[PaymentOut])
-def list_payments(db: DbSession, params: PageParams = Depends(page_params)):
+def list_payments(db: DbSession, params: PageParams = Depends(page_params), payment_type: PaymentType | None = Query(default=None)):
     query = db.query(Payment)
+    if payment_type is not None:
+        query = query.filter(Payment.payment_type == payment_type)
     if params.search:
         like = f"%{params.search}%"
         query = query.filter(Payment.payment_number.ilike(like))
     query = apply_sort(query, params.sort, Payment, SORT_FIELDS | {"payment_date"}, "-payment_date")
     items, total = paginate(query, params)
+    for item in items:
+        payment_service.attach_display_fields(item)
     return Page(items=items, page=params.page, page_size=params.page_size,
                 total=total, total_pages=total_pages(total, params.page_size))
 
 
 @router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
 def create_payment(payload: PaymentCreate, db: DbSession, user: CurrentUser):
-    return payment_service.create_and_post_payment(db, payload.model_dump(), created_by_user_id=user.id)
+    payment = payment_service.create_and_post_payment(db, payload.model_dump(), created_by_user_id=user.id)
+    return payment_service.attach_display_fields(payment)
 
 
 @router.get("/{payment_id}", response_model=PaymentOut)
 def get_payment(payment_id: int, db: DbSession):
-    return master_service.get_record(db, Payment, payment_id, not_found_message="Payment not found.")
+    payment = master_service.get_record(db, Payment, payment_id, not_found_message="Payment not found.")
+    return payment_service.attach_display_fields(payment)
 
 
 @router.post(
@@ -49,7 +55,8 @@ def get_payment(payment_id: int, db: DbSession):
 )
 def cancel_payment(payment_id: int, db: DbSession, user: CurrentUser):
     payment = master_service.get_record(db, Payment, payment_id, not_found_message="Payment not found.")
-    return payment_service.cancel_payment(db, payment, cancelled_by_user_id=user.id)
+    payment = payment_service.cancel_payment(db, payment, cancelled_by_user_id=user.id)
+    return payment_service.attach_display_fields(payment)
 
 
 @router.get("/documents/{document_id}/outstanding", response_model=DocumentOutstandingOut)

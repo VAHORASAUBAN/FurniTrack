@@ -1,3 +1,5 @@
+import type { DocumentType } from '../lib/documentRoutes'
+
 export type PaymentType = 'RECEIVE' | 'SEND'
 export type PaymentMethod = 'BANK' | 'CASH'
 export type PaymentStatus = 'DRAFT' | 'POSTED' | 'CANCELLED'
@@ -5,6 +7,8 @@ export type PaymentStatus = 'DRAFT' | 'POSTED' | 'CANCELLED'
 export interface PaymentAllocation {
   id: number
   document_id: number
+  doc_number: string
+  doc_type: DocumentType
   amount_allocated: string
 }
 
@@ -14,6 +18,7 @@ export interface Payment {
   payment_type: PaymentType
   method: PaymentMethod
   partner_id: number
+  partner_name: string
   journal_id: number
   payment_date: string
   amount: string

@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import PaymentMethod, PaymentStatus, PaymentType
+from app.models.enums import DocType, PaymentMethod, PaymentStatus, PaymentType
 from app.schemas.common import Money
 
 
@@ -32,6 +32,8 @@ class PaymentAllocationOut(BaseModel):
 
     id: int
     document_id: int
+    doc_number: str
+    doc_type: DocType
     amount_allocated: Money
 
 
@@ -43,6 +45,7 @@ class PaymentOut(BaseModel):
     payment_type: PaymentType
     method: PaymentMethod
     partner_id: int
+    partner_name: str
     journal_id: int
     payment_date: date
     amount: Money

@@ -82,6 +82,18 @@ def create_and_post_payment(db: Session, data: dict, *, created_by_user_id: int)
     return payment
 
 
+def attach_display_fields(payment: Payment) -> Payment:
+    """Stamps partner_name and per-allocation doc_number/doc_type onto
+    (transient, non-mapped) attributes so PaymentOut's from_attributes
+    pickup finds them - same pattern as document_service.attach_balance:
+    a plain read through an existing relationship, not a stored column."""
+    payment.partner_name = payment.partner.name
+    for allocation in payment.allocations:
+        allocation.doc_number = allocation.document.doc_number
+        allocation.doc_type = allocation.document.doc_type
+    return payment
+
+
 def cancel_payment(db: Session, payment: Payment, *, cancelled_by_user_id: int) -> Payment:
     if payment.status != PaymentStatus.POSTED:
         raise PostingError("Only a posted payment can be cancelled.", code="NOT_POSTED")

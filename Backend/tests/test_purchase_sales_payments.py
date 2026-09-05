@@ -318,3 +318,74 @@ def test_draft_document_pdf_still_renders(client, admin_auth_header, vendor_id):
     resp = client.get(f"/api/v1/purchase/bills/{bill['id']}/pdf", headers=admin_auth_header)
     assert resp.status_code == 200
     assert resp.content[:4] == b"%PDF"
+
+
+def test_payment_list_filters_by_type_and_shows_partner_and_document_names(
+    client, admin_auth_header, vendor_id, customer_id
+):
+    bank_journal_id = _journal_id(client, admin_auth_header, "Bank")
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    income_id = _account_id(client, admin_auth_header, "Sales")
+
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "111.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+    sent = client.post(
+        "/api/v1/payments",
+        json={
+            "payment_type": "SEND", "method": "BANK", "partner_id": vendor_id, "journal_id": bank_journal_id,
+            "payment_date": "2026-04-02", "amount": "111.00",
+            "allocations": [{"document_id": bill["id"], "amount_allocated": "111.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    invoice = client.post(
+        "/api/v1/sales/invoices",
+        json={
+            "partner_id": customer_id, "doc_date": "2026-04-01",
+            "lines": [{"account_id": income_id, "quantity": "1", "unit_price": "222.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/sales/invoices/{invoice['id']}/post", headers=admin_auth_header)
+    received = client.post(
+        "/api/v1/payments",
+        json={
+            "payment_type": "RECEIVE", "method": "BANK", "partner_id": customer_id, "journal_id": bank_journal_id,
+            "payment_date": "2026-04-02", "amount": "222.00",
+            "allocations": [{"document_id": invoice["id"], "amount_allocated": "222.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    # The create response itself carries the display fields, not just the get/list ones.
+    assert sent["partner_name"]
+    assert sent["allocations"][0]["doc_number"] == bill["doc_number"]
+    assert sent["allocations"][0]["doc_type"] == "VENDOR_BILL"
+
+    send_list = client.get(
+        "/api/v1/payments", params={"payment_type": "SEND", "search": sent["payment_number"]},
+        headers=admin_auth_header,
+    ).json()
+    assert send_list["total"] == 1
+    assert send_list["items"][0]["partner_name"] == sent["partner_name"]
+
+    # Filtering by RECEIVE must never surface a SEND payment, even one that
+    # matches the search term.
+    receive_list = client.get(
+        "/api/v1/payments", params={"payment_type": "RECEIVE", "search": sent["payment_number"]},
+        headers=admin_auth_header,
+    ).json()
+    assert receive_list["total"] == 0
+
+    detail = client.get(f"/api/v1/payments/{received['id']}", headers=admin_auth_header).json()
+    assert detail["partner_name"]
+    assert detail["allocations"][0]["doc_number"] == invoice["doc_number"]
+    assert detail["allocations"][0]["doc_type"] == "CUSTOMER_INVOICE"

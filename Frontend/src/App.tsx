@@ -1,6 +1,5 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
-import { ComingSoon } from './components/shared/ComingSoon'
 import { AccountFormPage } from './features/accounts/AccountFormPage'
 import { AccountListPage } from './features/accounts/AccountListPage'
 import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
@@ -12,6 +11,8 @@ import { SignUpPage } from './features/auth/SignUpPage'
 import { BudgetFormPage } from './features/budgets/BudgetFormPage'
 import { BudgetListPage } from './features/budgets/BudgetListPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
+import { PaymentDetailPage } from './features/payments/PaymentDetailPage'
+import { PaymentListPage } from './features/payments/PaymentListPage'
 import { PortalInvoiceDetailPage } from './features/portal/PortalInvoiceDetailPage'
 import { PortalInvoiceListPage } from './features/portal/PortalInvoiceListPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
@@ -83,13 +84,21 @@ function App() {
             <Route path="/purchase/orders/:id" element={<PurchaseOrderFormPage />} />
             <Route path="/purchase/bills" element={<VendorBillListPage />} />
             <Route path="/purchase/bills/:id" element={<VendorBillFormPage />} />
-            <Route path="/purchase/payments" element={<ComingSoon title="Payments" />} />
+            <Route
+              path="/purchase/payments"
+              element={<PaymentListPage paymentType="SEND" title="Payments" basePath="/purchase/payments" />}
+            />
+            <Route path="/purchase/payments/:id" element={<PaymentDetailPage backPath="/purchase/payments" />} />
 
             <Route path="/sales/orders" element={<SalesOrderListPage />} />
             <Route path="/sales/orders/:id" element={<SalesOrderFormPage />} />
             <Route path="/sales/invoices" element={<CustomerInvoiceListPage />} />
             <Route path="/sales/invoices/:id" element={<CustomerInvoiceFormPage />} />
-            <Route path="/sales/receipts" element={<ComingSoon title="Receipts" />} />
+            <Route
+              path="/sales/receipts"
+              element={<PaymentListPage paymentType="RECEIVE" title="Receipts" basePath="/sales/receipts" />}
+            />
+            <Route path="/sales/receipts/:id" element={<PaymentDetailPage backPath="/sales/receipts" />} />
 
             <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
             <Route path="/reports/profit-loss" element={<ProfitLossPage />} />
