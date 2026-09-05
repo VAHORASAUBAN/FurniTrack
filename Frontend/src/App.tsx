@@ -7,6 +7,8 @@ import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFor
 import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { SignUpPage } from './features/auth/SignUpPage'
+import { BudgetFormPage } from './features/budgets/BudgetFormPage'
+import { BudgetListPage } from './features/budgets/BudgetListPage'
 import { PortalInvoiceDetailPage } from './features/portal/PortalInvoiceDetailPage'
 import { PortalInvoiceListPage } from './features/portal/PortalInvoiceListPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
@@ -19,6 +21,8 @@ import { ProductFormPage } from './features/products/ProductFormPage'
 import { ProductListPage } from './features/products/ProductListPage'
 import { PurchaseOrderFormPage } from './features/purchase/PurchaseOrderFormPage'
 import { PurchaseOrderListPage } from './features/purchase/PurchaseOrderListPage'
+import { BalanceSheetPage } from './features/reports/BalanceSheetPage'
+import { ProfitLossPage } from './features/reports/ProfitLossPage'
 import { VendorBillFormPage } from './features/purchase/VendorBillFormPage'
 import { VendorBillListPage } from './features/purchase/VendorBillListPage'
 import { CustomerInvoiceFormPage } from './features/sales/CustomerInvoiceFormPage'
@@ -67,7 +71,8 @@ function App() {
             <Route path="/analytics" element={<AnalyticAccountListPage />} />
             <Route path="/analytics/:id" element={<AnalyticAccountFormPage />} />
 
-            <Route path="/budgets" element={<ComingSoon title="Budgets" />} />
+            <Route path="/budgets" element={<BudgetListPage />} />
+            <Route path="/budgets/:id" element={<BudgetFormPage />} />
 
             <Route path="/purchase/orders" element={<PurchaseOrderListPage />} />
             <Route path="/purchase/orders/:id" element={<PurchaseOrderFormPage />} />
@@ -81,9 +86,9 @@ function App() {
             <Route path="/sales/invoices/:id" element={<CustomerInvoiceFormPage />} />
             <Route path="/sales/receipts" element={<ComingSoon title="Receipts" />} />
 
-            <Route path="/reports/balance-sheet" element={<ComingSoon title="Balance Sheet" />} />
-            <Route path="/reports/profit-loss" element={<ComingSoon title="Profit & Loss" />} />
-            <Route path="/reports/budget" element={<ComingSoon title="Budget Report" />} />
+            <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
+            <Route path="/reports/profit-loss" element={<ProfitLossPage />} />
+            <Route path="/reports/budget" element={<Navigate to="/budgets" replace />} />
 
             <Route element={<RequireRole allow={['ADMIN']} />}>
               <Route path="/settings/users" element={<UserListPage />} />

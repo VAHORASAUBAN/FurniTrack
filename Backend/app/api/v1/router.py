@@ -7,6 +7,7 @@ from app.api.v1 import (
     accounts,
     analytics,
     auth,
+    budgets,
     contacts,
     journal_entries,
     journals,
@@ -14,6 +15,7 @@ from app.api.v1 import (
     portal,
     products,
     purchase,
+    reports,
     sales,
     users,
 )
@@ -32,6 +34,8 @@ api_router.include_router(purchase.router)
 api_router.include_router(sales.router)
 api_router.include_router(payments.router)
 api_router.include_router(portal.router)
+api_router.include_router(budgets.router)
+api_router.include_router(reports.router)
 
 # Populated incrementally as each module is built:
-# from app.api.v1 import budgets, reports, dashboard
+# from app.api.v1 import dashboard
