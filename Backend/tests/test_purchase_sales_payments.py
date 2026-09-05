@@ -613,3 +613,102 @@ def test_payment_list_filters_by_status_and_date_range(client, admin_auth_header
         headers=admin_auth_header,
     ).json()
     assert out_of_range["total"] == 0
+
+
+def test_draft_purchase_order_can_be_deleted(client, admin_auth_header, vendor_id):
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    po = client.post(
+        "/api/v1/purchase/orders",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    delete_resp = client.delete(f"/api/v1/purchase/orders/{po['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 204
+
+    assert client.get(f"/api/v1/purchase/orders/{po['id']}", headers=admin_auth_header).status_code == 404
+
+
+def test_confirmed_purchase_order_cannot_be_deleted(client, admin_auth_header, vendor_id):
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    po = client.post(
+        "/api/v1/purchase/orders",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/orders/{po['id']}/confirm", headers=admin_auth_header)
+
+    delete_resp = client.delete(f"/api/v1/purchase/orders/{po['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 409
+    assert delete_resp.json()["error"]["code"] == "NOT_DRAFT"
+
+
+def test_draft_vendor_bill_can_be_deleted(client, admin_auth_header, vendor_id):
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    delete_resp = client.delete(f"/api/v1/purchase/bills/{bill['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 204
+    assert client.get(f"/api/v1/purchase/bills/{bill['id']}", headers=admin_auth_header).status_code == 404
+
+
+def test_posted_vendor_bill_cannot_be_deleted(client, admin_auth_header, vendor_id):
+    expense_id = _account_id(client, admin_auth_header, "Purchase")
+    bill = client.post(
+        "/api/v1/purchase/bills",
+        json={
+            "partner_id": vendor_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": expense_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/purchase/bills/{bill['id']}/post", headers=admin_auth_header)
+
+    delete_resp = client.delete(f"/api/v1/purchase/bills/{bill['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 409
+    assert delete_resp.json()["error"]["code"] == "NOT_DRAFT"
+
+
+def test_draft_sales_order_can_be_deleted(client, admin_auth_header, customer_id):
+    income_id = _account_id(client, admin_auth_header, "Sales")
+    so = client.post(
+        "/api/v1/sales/orders",
+        json={
+            "partner_id": customer_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": income_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    delete_resp = client.delete(f"/api/v1/sales/orders/{so['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 204
+    assert client.get(f"/api/v1/sales/orders/{so['id']}", headers=admin_auth_header).status_code == 404
+
+
+def test_draft_customer_invoice_can_be_deleted(client, admin_auth_header, customer_id):
+    income_id = _account_id(client, admin_auth_header, "Sales")
+    invoice = client.post(
+        "/api/v1/sales/invoices",
+        json={
+            "partner_id": customer_id, "doc_date": "2026-02-01",
+            "lines": [{"account_id": income_id, "quantity": "1", "unit_price": "500.00", "tax_rate": "0"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    delete_resp = client.delete(f"/api/v1/sales/invoices/{invoice['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 204
+    assert client.get(f"/api/v1/sales/invoices/{invoice['id']}", headers=admin_auth_header).status_code == 404

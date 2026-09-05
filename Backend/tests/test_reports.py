@@ -176,6 +176,47 @@ def test_budget_confirm_lifecycle(client, admin_auth_header):
     assert cancel_resp.json()["status"] == "CANCELLED"
 
 
+def test_draft_budget_can_be_deleted(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    analytic = client.post(
+        "/api/v1/analytic-accounts", json={"name": f"Delete {suffix}", "analytic_type": "EXPENSE"},
+        headers=admin_auth_header,
+    ).json()
+    budget = client.post(
+        "/api/v1/budgets",
+        json={
+            "name": f"Delete Budget {suffix}", "start_date": "2026-05-01", "end_date": "2026-05-31",
+            "lines": [{"analytic_account_id": analytic["id"], "analytic_type": "EXPENSE", "planned_amount": "100.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+
+    delete_resp = client.delete(f"/api/v1/budgets/{budget['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 204
+    assert client.get(f"/api/v1/budgets/{budget['id']}", headers=admin_auth_header).status_code == 404
+
+
+def test_confirmed_budget_cannot_be_deleted(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    analytic = client.post(
+        "/api/v1/analytic-accounts", json={"name": f"NoDelete {suffix}", "analytic_type": "EXPENSE"},
+        headers=admin_auth_header,
+    ).json()
+    budget = client.post(
+        "/api/v1/budgets",
+        json={
+            "name": f"NoDelete Budget {suffix}", "start_date": "2026-05-01", "end_date": "2026-05-31",
+            "lines": [{"analytic_account_id": analytic["id"], "analytic_type": "EXPENSE", "planned_amount": "100.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/budgets/{budget['id']}/confirm", headers=admin_auth_header)
+
+    delete_resp = client.delete(f"/api/v1/budgets/{budget['id']}", headers=admin_auth_header)
+    assert delete_resp.status_code == 409
+    assert delete_resp.json()["error"]["code"] == "NOT_DRAFT"
+
+
 def test_budget_revise_creates_a_linked_draft_and_supersedes_the_original(client, admin_auth_header):
     suffix = uuid.uuid4().hex[:8]
     analytic = client.post(

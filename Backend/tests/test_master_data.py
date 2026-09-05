@@ -7,7 +7,14 @@ whose absence was a real bug caught manually during the build (a freshly
 created record's client-side-defaulted decimal serialised as "0" instead of
 "0.00", inconsistent with every value that had round-tripped through MySQL).
 """
+import base64
 import uuid
+
+# A real, minimal 1x1 PNG - valid enough for Pillow-free content-type/size
+# checks; the upload endpoints never decode pixels, just store bytes.
+_TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 # Accounts created here are never cleaned up: there is no hard-delete
 # endpoint by design (§2.9 — archive-only), so leftover test rows are inert.
@@ -183,3 +190,82 @@ def test_user_list_filters_by_role(client, admin_auth_header):
         "/api/v1/users", params={"search": login_id, "role": "ADMIN"}, headers=admin_auth_header
     ).json()
     assert admins_only["total"] == 0
+
+
+def test_contact_image_upload(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    contact = client.post(
+        "/api/v1/contacts",
+        json={"name": f"Photo Contact {suffix}", "contact_type": "CUSTOMER", "email": f"{suffix}@t.co"},
+        headers=admin_auth_header,
+    ).json()["contact"]
+    assert contact["profile_image_url"] is None
+
+    upload_resp = client.post(
+        f"/api/v1/contacts/{contact['id']}/image",
+        files={"file": ("avatar.png", _TINY_PNG, "image/png")},
+        headers=admin_auth_header,
+    )
+    assert upload_resp.status_code == 200, upload_resp.text
+    image_url = upload_resp.json()["profile_image_url"]
+    assert image_url.startswith("/static/")
+
+    refreshed = client.get(f"/api/v1/contacts/{contact['id']}", headers=admin_auth_header).json()
+    assert refreshed["profile_image_url"] == image_url
+
+
+def test_contact_image_upload_rejects_wrong_content_type(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    contact = client.post(
+        "/api/v1/contacts",
+        json={"name": f"Bad Photo Contact {suffix}", "contact_type": "CUSTOMER", "email": f"{suffix}@t.co"},
+        headers=admin_auth_header,
+    ).json()["contact"]
+
+    upload_resp = client.post(
+        f"/api/v1/contacts/{contact['id']}/image",
+        files={"file": ("notes.txt", b"not an image", "text/plain")},
+        headers=admin_auth_header,
+    )
+    assert upload_resp.status_code == 400
+    assert upload_resp.json()["error"]["code"] == "UNSUPPORTED_IMAGE_TYPE"
+
+
+def test_product_image_upload(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    product = client.post(
+        "/api/v1/products",
+        json={"name": f"Photo Product {suffix}", "product_type": "GOODS"},
+        headers=admin_auth_header,
+    ).json()
+    assert product["image_url"] is None
+
+    upload_resp = client.post(
+        f"/api/v1/products/{product['id']}/image",
+        files={"file": ("product.png", _TINY_PNG, "image/png")},
+        headers=admin_auth_header,
+    )
+    assert upload_resp.status_code == 200, upload_resp.text
+    image_url = upload_resp.json()["image_url"]
+    assert image_url.startswith("/static/")
+
+    refreshed = client.get(f"/api/v1/products/{product['id']}", headers=admin_auth_header).json()
+    assert refreshed["image_url"] == image_url
+
+
+def test_product_image_upload_rejects_oversized_file(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    product = client.post(
+        "/api/v1/products",
+        json={"name": f"Big Photo Product {suffix}", "product_type": "GOODS"},
+        headers=admin_auth_header,
+    ).json()
+
+    oversized = b"\x00" * (3 * 1024 * 1024)  # over the 2MB default limit
+    upload_resp = client.post(
+        f"/api/v1/products/{product['id']}/image",
+        files={"file": ("huge.png", oversized, "image/png")},
+        headers=admin_auth_header,
+    )
+    assert upload_resp.status_code == 400
+    assert upload_resp.json()["error"]["code"] == "IMAGE_TOO_LARGE"
