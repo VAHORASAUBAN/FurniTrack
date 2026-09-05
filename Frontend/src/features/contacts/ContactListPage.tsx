@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { API_ORIGIN } from '../../api/client'
 import { listContacts } from '../../api/endpoints/contacts'
 import { ListView } from '../../components/shared/ListView'
 import { StatusPill } from '../../components/shared/StatusPill'
@@ -30,7 +31,7 @@ export function ContactListPage() {
           accessor: (c) => (
             <div className="flex items-center gap-2.5">
               {c.profile_image_url ? (
-                <img src={c.profile_image_url} alt="" className="h-7 w-7 rounded-full object-cover" />
+                <img src={`${API_ORIGIN}${c.profile_image_url}`} alt="" className="h-7 w-7 rounded-full object-cover" />
               ) : (
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent-bg)] text-xs font-semibold text-[var(--color-accent)]">
                   {c.name.charAt(0).toUpperCase()}
@@ -61,7 +62,7 @@ export function ContactListPage() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               {c.profile_image_url ? (
-                <img src={c.profile_image_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+                <img src={`${API_ORIGIN}${c.profile_image_url}`} alt="" className="h-6 w-6 rounded-full object-cover" />
               ) : (
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-accent-bg)] text-[10px] font-semibold text-[var(--color-accent)]">
                   {c.name.charAt(0).toUpperCase()}
