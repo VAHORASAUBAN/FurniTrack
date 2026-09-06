@@ -10,6 +10,7 @@ export interface CurrentUser {
   role: UserRole
   contact_id: number | null
   is_active: boolean
+  must_change_password: boolean
 }
 
 interface AuthState {

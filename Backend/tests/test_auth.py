@@ -8,7 +8,7 @@ import uuid
 import pytest
 
 from app.db.session import SessionLocal
-from app.models import PasswordResetToken, RefreshToken, User
+from app.models import Contact, PasswordResetToken, RefreshToken, User
 from app.services import auth_service
 
 
@@ -228,6 +228,126 @@ def test_reset_password_mismatched_confirmation_returns_422(client, new_accounta
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_change_password_wrong_current_password_returns_401(client, new_accountant):
+    resp = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "WrongPassword1",
+            "new_password": "BrandNewPass1", "new_password_confirm": "BrandNewPass1",
+        },
+        headers=_auth_header(client, new_accountant),
+    )
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "INVALID_CURRENT_PASSWORD"
+
+
+def test_change_password_mismatched_confirmation_returns_422(client, new_accountant):
+    resp = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": new_accountant["password"],
+            "new_password": "PasswordOne1", "new_password_confirm": "PasswordTwo2",
+        },
+        headers=_auth_header(client, new_accountant),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_change_password_without_token_returns_401(client):
+    resp = client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "x", "new_password": "BrandNewPass1", "new_password_confirm": "BrandNewPass1"},
+    )
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_change_password_full_round_trip_revokes_other_sessions(client, new_accountant):
+    """Same "kill every session" reasoning as reset_password — a change
+    made from one session must not leave an earlier session's refresh
+    token still able to mint fresh access tokens against the old grant."""
+    old_refresh = _login(client, new_accountant)["refresh_token"]
+
+    resp = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": new_accountant["password"],
+            "new_password": "BrandNewPass1", "new_password_confirm": "BrandNewPass1",
+        },
+        headers=_auth_header(client, new_accountant),
+    )
+    assert resp.status_code == 204
+
+    old_login = client.post(
+        "/api/v1/auth/login",
+        json={"login_id": new_accountant["login_id"], "password": new_accountant["password"]},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/v1/auth/login", json={"login_id": new_accountant["login_id"], "password": "BrandNewPass1"}
+    )
+    assert new_login.status_code == 200
+
+    stale_refresh_resp = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert stale_refresh_resp.status_code == 401
+    assert stale_refresh_resp.json()["error"]["code"] == "REFRESH_REVOKED"
+
+
+def test_portal_auto_provision_forces_password_change_then_clears_it(client, admin_auth_header):
+    """The one-time password contact_service generates for an auto-provisioned
+    portal login (design doc §5.3 gap-fill) must force a real change before
+    must_change_password clears — this is the whole point of the flag."""
+    suffix = uuid.uuid4().hex[:8]
+    create_resp = client.post(
+        "/api/v1/contacts",
+        json={
+            "name": f"Portal Contact {suffix}", "contact_type": "CUSTOMER",
+            "email": f"portal_{suffix}@t.co", "create_portal_user": True,
+        },
+        headers=admin_auth_header,
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    body = create_resp.json()
+    creds = body["portal_credentials"]
+    contact_id = body["contact"]["id"]
+
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"login_id": creds["login_id"], "password": creds["temporary_password"]},
+    )
+    assert login_resp.status_code == 200, login_resp.text
+    tokens = login_resp.json()
+    assert tokens["user"]["must_change_password"] is True
+    user_id = tokens["user"]["id"]
+
+    change_resp = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": creds["temporary_password"],
+            "new_password": "BrandNewPass1", "new_password_confirm": "BrandNewPass1",
+        },
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert change_resp.status_code == 204, change_resp.text
+
+    relogin = client.post(
+        "/api/v1/auth/login", json={"login_id": creds["login_id"], "password": "BrandNewPass1"}
+    )
+    assert relogin.status_code == 200
+    assert relogin.json()["user"]["must_change_password"] is False
+
+    db = SessionLocal()
+    try:
+        db.query(RefreshToken).filter_by(user_id=user_id).delete()
+        db.query(User).filter_by(id=user_id).delete()
+        db.query(Contact).filter_by(id=contact_id).delete()
+        db.commit()
+    finally:
+        db.close()
 
 
 # --- helpers ---

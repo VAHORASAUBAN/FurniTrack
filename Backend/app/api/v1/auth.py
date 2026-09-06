@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession
 from app.schemas.auth import (
     AccessTokenResponse,
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
@@ -72,3 +73,8 @@ def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
 def reset_password(payload: ResetPasswordRequest, db: DbSession):
     auth_service.reset_password(db, payload.token, payload.new_password)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(payload: ChangePasswordRequest, db: DbSession, user: CurrentUser):
+    auth_service.change_password(db, user, payload.current_password, payload.new_password)

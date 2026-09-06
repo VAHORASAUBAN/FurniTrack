@@ -5,6 +5,7 @@ import { AccountFormPage } from './features/accounts/AccountFormPage'
 import { AccountListPage } from './features/accounts/AccountListPage'
 import { AnalyticAccountFormPage } from './features/analytics/AnalyticAccountFormPage'
 import { AnalyticAccountListPage } from './features/analytics/AnalyticAccountListPage'
+import { ChangePasswordPage } from './features/auth/ChangePasswordPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
@@ -57,6 +58,10 @@ function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {/* Outside every RequireRole group deliberately — must render even
+            while must_change_password is still true, which is what would
+            otherwise redirect any role-guarded route straight back here. */}
+        <Route path="/change-password" element={<ChangePasswordPage />} />
 
         <Route element={<RequireRole allow={[...STAFF]} />}>
           <Route element={<AppShell />}>

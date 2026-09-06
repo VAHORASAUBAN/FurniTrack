@@ -178,3 +178,20 @@ def reset_password(db: Session, raw_token: str, new_password: str) -> None:
     # detection revocation above.
     db.query(RefreshToken).filter_by(user_id=user.id).update({"is_revoked": True})
     db.flush()
+
+
+def change_password(db: Session, user: User, current_password: str, new_password: str) -> None:
+    """The authenticated counterpart to reset_password: the caller already
+    holds a valid session and proves themselves with their current password
+    rather than an emailed token. Also clears must_change_password, so this
+    is the one path a portal user's one-time password (contact_service.
+    _generate_temp_password) leads to a real, self-chosen credential."""
+    if not verify_password(current_password, user.password_hash):
+        raise UnauthorizedError("Current password is incorrect.", code="INVALID_CURRENT_PASSWORD")
+
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = False
+    # Same reasoning as reset_password — revoke every other session so a
+    # stale refresh token can't keep using the old credential's grant.
+    db.query(RefreshToken).filter_by(user_id=user.id).update({"is_revoked": True})
+    db.flush()

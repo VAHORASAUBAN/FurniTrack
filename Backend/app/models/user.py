@@ -30,6 +30,9 @@ class User(Base, TimestampMixin):
     # Contact (design doc §5.3 `create_portal_user`), never the reverse.
     contact_id: Mapped[int | None] = mapped_column(UBigInt, ForeignKey("contact.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # Set on system-generated one-time passwords (portal auto-provision —
+    # see contact_service._generate_temp_password); cleared by change_password.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
     contact: Mapped["Contact | None"] = relationship(back_populates="portal_user", foreign_keys=[contact_id])
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

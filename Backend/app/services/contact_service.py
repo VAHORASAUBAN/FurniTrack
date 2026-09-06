@@ -75,6 +75,7 @@ def create_contact(db: Session, data: dict, *, create_portal_user: bool) -> tupl
         role=UserRole.PORTAL,
         contact_id=contact.id,
         is_active=True,
+        must_change_password=True,
     )
     db.add(portal_user)
     db.flush()

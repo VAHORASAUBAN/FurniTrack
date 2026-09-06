@@ -51,3 +51,11 @@ export async function resetPassword(input: {
 }): Promise<void> {
   await apiClient.post('/auth/reset-password', input)
 }
+
+export async function changePassword(input: {
+  current_password: string
+  new_password: string
+  new_password_confirm: string
+}): Promise<void> {
+  await apiClient.post('/auth/change-password', input)
+}

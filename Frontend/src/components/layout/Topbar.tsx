@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react'
+import { KeyRound, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logout as logoutApi } from '../../api/endpoints/auth'
 import { useAuthStore } from '../../stores/authStore'
@@ -40,6 +40,14 @@ export function Topbar() {
       <div className="flex items-center gap-4">
         {user?.role !== 'PORTAL' && <NotificationBell />}
         <ThemeToggle />
+        <button
+          onClick={() => navigate('/change-password')}
+          aria-label="Change password"
+          title="Change password"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)] hover:text-[var(--color-ink)]"
+        >
+          <KeyRound size={16} />
+        </button>
         <span className="h-6 w-px bg-[var(--color-rule)]" />
         {user && (
           <div className="flex items-center gap-2.5">

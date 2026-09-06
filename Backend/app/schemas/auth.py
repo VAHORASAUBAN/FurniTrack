@@ -55,6 +55,23 @@ class ResetPasswordRequest(BaseModel):
         return self
 
 
+class ChangePasswordRequest(BaseModel):
+    """For an already-authenticated user (current_password required) — as
+    opposed to ResetPasswordRequest's token flow for a user who can't log in
+    at all. Covers both a voluntary change and clearing a portal user's
+    forced must_change_password flag after their one-time password."""
+
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+    new_password_confirm: str
+
+    @model_validator(mode="after")
+    def _passwords_match(self):
+        if self.new_password != self.new_password_confirm:
+            raise ValueError("Passwords do not match.")
+        return self
+
+
 class MessageOut(BaseModel):
     message: str
 
@@ -69,6 +86,7 @@ class UserOut(BaseModel):
     role: UserRole
     contact_id: int | None
     is_active: bool
+    must_change_password: bool
 
 
 class TokenResponse(BaseModel):
