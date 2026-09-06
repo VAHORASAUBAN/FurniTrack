@@ -73,7 +73,15 @@ apiClient.interceptors.response.use((response) => {
 
 // Design doc §7.1 / §9.3: a single in-flight refresh shared across
 // concurrent 401s, so five parallel requests failing at once trigger one
-// refresh call, not five.
+// refresh call, not five. Also the fix for a real bug: React 18 StrictMode
+// double-invokes effects in dev, so useSessionBootstrap's mount effect used
+// to fire two independent /auth/refresh calls with the SAME stored token on
+// every page load. The backend's reuse-detection (by design) treats a
+// token's second use as a leak and revokes the whole family - including the
+// fresh token the first call had just legitimately received - so the user
+// got signed out on the very next reload. Routing every caller through this
+// one shared in-flight promise means only one request ever actually goes
+// out for a given token, however many places ask for a fresh one at once.
 let refreshPromise: Promise<string | null> | null = null
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -91,6 +99,15 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+export function ensureFreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
+
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retried?: boolean
 }
@@ -104,12 +121,7 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && config && !config._retried && !isAuthEndpoint) {
       config._retried = true
-      if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-          refreshPromise = null
-        })
-      }
-      const newToken = await refreshPromise
+      const newToken = await ensureFreshAccessToken()
       if (newToken) {
         config.headers.Authorization = `Bearer ${newToken}`
         return apiClient(config)
