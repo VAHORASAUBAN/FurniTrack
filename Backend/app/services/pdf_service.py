@@ -429,6 +429,160 @@ def build_balance_sheet_pdf(bs: dict, company_name: str) -> bytes:
     return buf.getvalue()
 
 
+def _kpi_table(rows: list[tuple[str, str]], s: dict) -> Table:
+    bold_style = ParagraphStyle("KpiValue", parent=s["body"], fontName="Helvetica-Bold", alignment=TA_RIGHT)
+    table = Table(
+        [[Paragraph(label, s["body"]), Paragraph(value, bold_style)] for label, value in rows],
+        colWidths=[130 * mm, 44 * mm],
+    )
+    table.setStyle(TableStyle([
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3), ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.25, _RULE),
+    ]))
+    return table
+
+
+def build_dashboard_summary_pdf(summary: dict, company_name: str) -> bytes:
+    """`summary` is `dashboard.build_dashboard_summary(db)`'s return dict —
+    a printable snapshot of the same numbers the landing screen shows,
+    since a screen full of KPI tiles has nothing else in this app to hand
+    a judge or a stakeholder who wants it on paper."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm, leftMargin=18 * mm,
+                             rightMargin=18 * mm, title="Dashboard Summary")
+    s = _report_styles()
+    generated = datetime.now().strftime("%d %b %Y %H:%M")
+    elements = _report_header("DASHBOARD SUMMARY", f"As of {generated}", company_name, s)
+
+    section_title_style = ParagraphStyle("DashSection", parent=s["body"], fontSize=10.5,
+                                          fontName="Helvetica-Bold", textColor=_ACCENT, spaceBefore=2, spaceAfter=3)
+
+    so, po = summary["sales_orders"], summary["purchase_orders"]
+    elements.append(Paragraph("ORDERS", section_title_style))
+    elements.append(_kpi_table([
+        ("Sales Orders — Confirmed", str(so["confirmed"])),
+        ("Sales Orders — Draft", str(so["draft"])),
+        ("Purchase Orders — Confirmed", str(po["confirmed"])),
+        ("Purchase Orders — Draft", str(po["draft"])),
+    ], s))
+    elements.append(Spacer(1, 6 * mm))
+
+    ci, vb = summary["customer_invoices"], summary["vendor_bills"]
+    elements.append(Paragraph("RECEIVABLES & PAYABLES", section_title_style))
+    elements.append(_kpi_table([
+        ("Customer Invoices — Unpaid", str(ci["unpaid_count"])),
+        ("Customer Invoices — Partially Paid", str(ci["partially_paid_count"])),
+        ("Customer Invoices — Paid", str(ci["paid_count"])),
+        ("Total Receivable", _money(Decimal(str(ci["total_amount_due"])))),
+        ("Vendor Bills — Unpaid", str(vb["unpaid_count"])),
+        ("Vendor Bills — Partially Paid", str(vb["partially_paid_count"])),
+        ("Vendor Bills — Paid", str(vb["paid_count"])),
+        ("Total Payable", _money(Decimal(str(vb["total_amount_due"])))),
+    ], s))
+    elements.append(Spacer(1, 6 * mm))
+
+    budgets = summary["budgets"]
+    planned, achieved = Decimal(str(budgets["total_planned"])), Decimal(str(budgets["total_achieved"]))
+    pct = (achieved / planned * 100) if planned else Decimal("0")
+    elements.append(Paragraph("BUDGETS", section_title_style))
+    elements.append(_kpi_table([
+        ("Active Budgets", str(budgets["active_count"])),
+        ("Total Planned", _money(planned)),
+        ("Total Achieved", _money(achieved)),
+        ("Achieved %", f"{pct:.0f}%"),
+    ], s))
+    elements.append(Spacer(1, 8 * mm))
+
+    elements.append(Paragraph("RECENT ACTIVITY", section_title_style))
+    recent = summary["recent_documents"]
+    if recent:
+        header = ["Type", "Doc No.", "Partner", "Date", "Status", "Total"]
+        rows = [header]
+        for d in recent:
+            rows.append([
+                d["doc_type"].replace("_", " ").title(), d["doc_number"], d["partner_name"],
+                d["doc_date"].strftime("%d %b %Y"), d["status"].title(), _money(Decimal(str(d["total_amount"]))),
+            ])
+        table = Table(rows, colWidths=[28 * mm, 30 * mm, 40 * mm, 24 * mm, 22 * mm, 30 * mm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), _PAPER),
+            ("TEXTCOLOR", (0, 0), (-1, 0), _INK_3),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 1), (-1, -1), 8.5),
+            ("TEXTCOLOR", (0, 1), (-1, -1), _INK),
+            ("ALIGN", (5, 0), (-1, -1), "RIGHT"),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.75, _RULE),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.4, _RULE),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("Nothing posted yet.", s["label"]))
+
+    doc.build(elements, onFirstPage=_report_footer(company_name), onLaterPages=_report_footer(company_name))
+    return buf.getvalue()
+
+
+def build_budget_report_pdf(budget, company_name: str) -> bytes:
+    """`budget` is a Budget ORM object already run through
+    `budget_service.attach_achieved` (each line carries achieved_amount/
+    achieved_pct/remaining), same as the JSON `GET /budgets/{id}` response."""
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm, leftMargin=18 * mm,
+                             rightMargin=18 * mm, title=f"Budget Report — {budget.name}")
+    s = _report_styles()
+    period_text = f"{budget.start_date.strftime('%d %b %Y')} – {budget.end_date.strftime('%d %b %Y')}"
+    elements = _report_header(budget.name.upper(), period_text, company_name, s)
+
+    total_planned = sum((line.planned_amount for line in budget.lines), Decimal("0"))
+    total_achieved = sum((line.achieved_amount for line in budget.lines), Decimal("0"))
+    overall_pct = (total_achieved / total_planned * 100) if total_planned else Decimal("0")
+
+    summary_style = ParagraphStyle("BudgetSummary", parent=s["body"], fontSize=10.5,
+                                    fontName="Helvetica-Bold", textColor=_ACCENT, spaceBefore=2, spaceAfter=3)
+    elements.append(Paragraph(f"Status: {budget.status.value.title()}", summary_style))
+    elements.append(Spacer(1, 4 * mm))
+
+    header = ["Analytic Account", "Planned", "Achieved", "%", "Remaining"]
+    rows = [header]
+    for line in budget.lines:
+        rows.append([
+            line.analytic_name, _money(line.planned_amount), _money(line.achieved_amount),
+            f"{line.achieved_pct:.0f}%", _money(line.remaining),
+        ])
+    table = Table(rows, colWidths=[54 * mm, 30 * mm, 30 * mm, 16 * mm, 30 * mm], repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), _PAPER),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _INK_3),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 1), (-1, -1), 9),
+        ("TEXTCOLOR", (0, 1), (-1, -1), _INK),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.75, _RULE),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.4, _RULE),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 5 * mm))
+
+    totals_style = ParagraphStyle("BudgetTotals", parent=s["body"], fontName="Helvetica-Bold", fontSize=11)
+    totals_right = ParagraphStyle("BudgetTotalsRight", parent=totals_style, alignment=TA_RIGHT)
+    totals_table = Table(
+        [[Paragraph("Overall", totals_style),
+          Paragraph(f"{_money(total_planned)}  /  {_money(total_achieved)}  ({overall_pct:.0f}%)", totals_right)]],
+        colWidths=[54 * mm, 106 * mm],
+    )
+    totals_table.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 0.75, _INK_3), ("TOPPADDING", (0, 0), (-1, -1), 4)]))
+    elements.append(totals_table)
+
+    doc.build(elements, onFirstPage=_report_footer(company_name), onLaterPages=_report_footer(company_name))
+    return buf.getvalue()
+
+
 def build_profit_loss_pdf(pl: dict, company_name: str) -> bytes:
     """`pl` is `profit_loss.build_profit_loss(db, date_from, date_to)`'s
     return dict (design doc §4.2)."""

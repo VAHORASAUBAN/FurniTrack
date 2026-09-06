@@ -4,14 +4,16 @@ Cancel is Admin-only, matching the permission matrix (§9.1)."""
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
 
+from app.accounting.resolver import get_company_settings
 from app.core.deps import DbSession, require_roles
 from app.core.pagination import PageParams, page_params, total_pages
 from app.models import Budget
 from app.models.enums import BudgetStatus, UserRole
 from app.schemas.budget import BudgetCreate, BudgetOut, BudgetUpdate
 from app.schemas.common import Page
-from app.services import budget_service, master_service
+from app.services import budget_service, master_service, pdf_service
 
 SEARCH_FIELDS = ["name"]
 SORT_FIELDS = {"name", "start_date", "end_date", "status", "updated_at"}
@@ -51,6 +53,19 @@ def create_budget(payload: BudgetCreate, db: DbSession):
 def get_budget(budget_id: int, db: DbSession):
     budget = master_service.get_record(db, Budget, budget_id, not_found_message="Budget not found.")
     return budget_service.attach_achieved(db, budget)
+
+
+@router.get("/{budget_id}/pdf")
+def get_budget_pdf(budget_id: int, db: DbSession):
+    budget = master_service.get_record(db, Budget, budget_id, not_found_message="Budget not found.")
+    budget = budget_service.attach_achieved(db, budget)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_budget_report_pdf(budget, company_name)
+    safe_name = budget.name.replace("/", "-")
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="budget-report-{safe_name}.pdf"'},
+    )
 
 
 @router.patch("/{budget_id}", response_model=BudgetOut)

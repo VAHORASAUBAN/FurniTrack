@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   BarChart3 as BarIcon,
   ChartArea as AreaIcon,
+  Download,
+  FileDown,
   LineChart as LineIcon,
   PieChart as PieIcon,
 } from 'lucide-react'
@@ -25,7 +27,11 @@ import {
 } from 'recharts'
 import { getBudget, listBudgets } from '../../api/endpoints/budgets'
 import { BudgetDrillDownModal } from '../budgets/BudgetDrillDownModal'
+import { downloadCsv } from '../../lib/csv'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
+import { toast } from '../../stores/toastStore'
+import type { Budget } from '../../types/budget'
 
 type ChartKind = 'bar' | 'line' | 'area' | 'pie'
 
@@ -46,6 +52,15 @@ const PIE_COLORS = ['#285e48', '#a9762f', '#5c8a8a', '#a35c3a', '#6b5c94', '#8a9
  * the Budgets screen), distinct from Account > Budgets, which is the
  * editable CRUD list. Previously this route just redirected to that list,
  * which read as "not working" since it never showed a report at all. */
+function exportBudgetCsv(budget: Budget) {
+  downloadCsv(
+    `budget-report-${budget.name.toLowerCase().replace(/\s+/g, '-')}.csv`,
+    ['Analytic Account', 'Planned', 'Achieved', '%', 'Remaining'],
+    budget.lines.map((l) => [l.analytic_name, l.planned_amount, l.achieved_amount, l.achieved_pct, l.remaining])
+  )
+  toast.success(`Exported ${budget.lines.length} line${budget.lines.length === 1 ? '' : 's'} to CSV`)
+}
+
 export function BudgetReportPage() {
   const [budgetId, setBudgetId] = useState<number | null>(null)
   const [drillDownLineIndex, setDrillDownLineIndex] = useState<number | null>(null)
@@ -96,6 +111,26 @@ export function BudgetReportPage() {
               </option>
             ))}
           </select>
+          {budget && (
+            <>
+              <button
+                type="button"
+                onClick={() => openPdf(`/budgets/${budget.id}/pdf`)}
+                title="Download this budget report as a PDF"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+              >
+                <FileDown size={14} /> Download PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => exportBudgetCsv(budget)}
+                title="Export this budget's lines as CSV"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+              >
+                <Download size={14} /> Export CSV
+              </button>
+            </>
+          )}
         </div>
       </div>
 

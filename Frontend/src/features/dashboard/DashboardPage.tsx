@@ -1,5 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDownCircle, ArrowUpCircle, Inbox, RotateCcw, ShoppingCart, SlidersHorizontal, Target } from 'lucide-react'
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Download,
+  FileDown,
+  Inbox,
+  RotateCcw,
+  ShoppingCart,
+  SlidersHorizontal,
+  Target,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -10,11 +20,15 @@ import { listPurchaseOrders, listVendorBills } from '../../api/endpoints/purchas
 import { DashboardDetailModal, type DetailColumn } from '../../components/shared/DashboardDetailModal'
 import { StatusPill } from '../../components/shared/StatusPill'
 import { useFloatingMenu } from '../../hooks/useFloatingMenu'
+import { downloadCsv } from '../../lib/csv'
 import { documentPath, DOC_TYPE_LABEL } from '../../lib/documentRoutes'
 import { formatMoney } from '../../lib/money'
+import { openPdf } from '../../lib/pdf'
 import { relativeTime } from '../../lib/time'
+import { toast } from '../../stores/toastStore'
 import { useDashboardPrefsStore, WIDGET_LABELS, type DashboardWidget } from '../../stores/dashboardPrefsStore'
 import type { Budget } from '../../types/budget'
+import type { DashboardSummary } from '../../types/dashboard'
 import type { Document } from '../../types/document'
 
 type DetailKind = 'customer_invoices' | 'vendor_bills' | 'sales_orders' | 'purchase_orders' | 'budgets'
@@ -173,6 +187,17 @@ function CustomizeMenu() {
   )
 }
 
+function exportRecentActivityCsv(data: DashboardSummary) {
+  downloadCsv(
+    'dashboard-recent-activity.csv',
+    ['Type', 'Doc No.', 'Partner', 'Date', 'Status', 'Total', 'Updated'],
+    data.recent_documents.map((d) => [
+      DOC_TYPE_LABEL[d.doc_type], d.doc_number, d.partner_name, d.doc_date, d.status, d.total_amount, d.updated_at,
+    ])
+  )
+  toast.success(`Exported ${data.recent_documents.length} record${data.recent_documents.length === 1 ? '' : 's'} to CSV`)
+}
+
 export function DashboardPage() {
   const navigate = useNavigate()
   const hidden = useDashboardPrefsStore((s) => s.hidden)
@@ -200,9 +225,27 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <h1 className="font-display text-[22px] font-semibold tracking-tight text-[var(--color-ink)]">Dashboard</h1>
-        <CustomizeMenu />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openPdf('/dashboard/summary/pdf')}
+            title="Download the whole summary as a PDF"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+          >
+            <FileDown size={14} /> Download PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => exportRecentActivityCsv(data)}
+            title="Export Recent Activity as CSV"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)]"
+          >
+            <Download size={14} /> Export CSV
+          </button>
+          <CustomizeMenu />
+        </div>
       </div>
 
       {anyKpiVisible && (

@@ -335,3 +335,37 @@ def test_budget_list_filters_by_status(client, admin_auth_header):
         "/api/v1/budgets", params={"search": suffix, "status": "CONFIRMED"}, headers=admin_auth_header
     ).json()
     assert confirmed_only["total"] == 1
+
+
+def test_budget_pdf_downloads_for_a_confirmed_budget(client, admin_auth_header):
+    suffix = uuid.uuid4().hex[:8]
+    analytic = client.post(
+        "/api/v1/analytic-accounts", json={"name": f"PDF {suffix}", "analytic_type": "EXPENSE"},
+        headers=admin_auth_header,
+    ).json()
+    budget = client.post(
+        "/api/v1/budgets",
+        json={
+            "name": f"PDF Budget {suffix}", "start_date": "2026-06-01", "end_date": "2026-06-30",
+            "lines": [{"analytic_account_id": analytic["id"], "analytic_type": "EXPENSE", "planned_amount": "1000.00"}],
+        },
+        headers=admin_auth_header,
+    ).json()
+    client.post(f"/api/v1/budgets/{budget['id']}/confirm", headers=admin_auth_header)
+
+    resp = client.get(f"/api/v1/budgets/{budget['id']}/pdf", headers=admin_auth_header)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:4] == b"%PDF"
+
+
+def test_budget_pdf_404s_for_unknown_budget(client, admin_auth_header):
+    resp = client.get("/api/v1/budgets/999999999/pdf", headers=admin_auth_header)
+    assert resp.status_code == 404
+
+
+def test_dashboard_summary_pdf_downloads(client, admin_auth_header):
+    resp = client.get("/api/v1/dashboard/summary/pdf", headers=admin_auth_header)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content[:4] == b"%PDF"
