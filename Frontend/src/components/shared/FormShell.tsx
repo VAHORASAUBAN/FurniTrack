@@ -57,6 +57,7 @@ export function FormShell({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
             className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-paper-2)] hover:text-[var(--color-ink)]"
           >
@@ -76,6 +77,7 @@ export function FormShell({
             {actions.map((action) => (
               <button
                 key={action.label}
+                type="button"
                 onClick={() => handleActionClick(action)}
                 disabled={action.disabled}
                 className={`rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-40 ${VARIANT_CLASSES[action.variant ?? 'secondary']}`}
@@ -108,12 +110,14 @@ export function FormShell({
             </p>
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setPendingAction(null)}
                 className="rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] px-3.5 py-2 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => {
                   pendingAction.onClick()
                   setPendingAction(null)

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { accountOptions } from '../../api/endpoints/accounts'
@@ -61,6 +61,13 @@ export function ProductFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `product` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form.
+  const blankValues: DefaultValues<FormValues> = { product_type: 'GOODS' }
+
   const {
     register,
     handleSubmit,
@@ -81,7 +88,7 @@ export function ProductFormPage() {
           expense_account_id: product.expense_account_id,
         }
       : undefined,
-    defaultValues: { product_type: 'GOODS' },
+    defaultValues: blankValues,
   })
 
   const createMutation = useMutation({
@@ -163,7 +170,7 @@ export function ProductFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending || updateMutation.isPending,
         },
-        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
+        { label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' },
       ]}
     >
       <div className="mb-5">

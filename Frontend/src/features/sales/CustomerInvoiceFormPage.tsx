@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
@@ -69,6 +69,18 @@ export function CustomerInvoiceFormPage() {
     enabled: Boolean(invoice?.partner_id) && showSend,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `invoice` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form. Passing
+  // this object explicitly also forces the `lines` useFieldArray to
+  // resync, which a bare reset() does not reliably do either.
+  const blankValues: DefaultValues<FormValues> = {
+    doc_date: new Date().toISOString().slice(0, 10),
+    lines: [{ ...emptyDocumentLine }],
+  }
+
   const {
     register,
     handleSubmit,
@@ -90,10 +102,7 @@ export function CustomerInvoiceFormPage() {
           })),
         }
       : undefined,
-    defaultValues: {
-      doc_date: new Date().toISOString().slice(0, 10),
-      lines: [{ ...emptyDocumentLine }],
-    },
+    defaultValues: blankValues,
   })
 
   const invalidate = () => {
@@ -151,7 +160,7 @@ export function CustomerInvoiceFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
-    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
+    actions.push({ label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' as const })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({

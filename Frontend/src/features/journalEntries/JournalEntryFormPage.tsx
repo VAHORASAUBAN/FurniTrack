@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { accountOptions } from '../../api/endpoints/accounts'
@@ -70,6 +70,18 @@ export function JournalEntryFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `entry` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form. Passing
+  // this object explicitly also forces the `lines` useFieldArray to
+  // resync, which a bare reset() does not reliably do either.
+  const blankValues: DefaultValues<FormValues> = {
+    entry_date: new Date().toISOString().slice(0, 10),
+    lines: [{ ...emptyLine }, { ...emptyLine }],
+  }
+
   const {
     register,
     handleSubmit,
@@ -94,10 +106,7 @@ export function JournalEntryFormPage() {
           })),
         }
       : undefined,
-    defaultValues: {
-      entry_date: new Date().toISOString().slice(0, 10),
-      lines: [{ ...emptyLine }, { ...emptyLine }],
-    },
+    defaultValues: blankValues,
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
@@ -186,7 +195,7 @@ export function JournalEntryFormPage() {
       variant: 'secondary' as const,
       disabled: updateMutation.isPending || createMutation.isPending,
     })
-    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
+    actions.push({ label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' as const })
   }
   if (!isNew) {
     actions.push({ label: 'Print', onClick: () => openPdf(`/journal-entries/${entryId}/pdf`), variant: 'secondary' as const })

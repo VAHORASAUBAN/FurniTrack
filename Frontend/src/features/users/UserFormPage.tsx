@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useGoBack } from '../../hooks/useGoBack'
 import { z } from 'zod'
@@ -51,6 +51,14 @@ export function UserFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly, consistent with every other form page - this page never
+  // populates `values` from an existing record (edits go through
+  // Archive/Unarchive only, see below), so a bare reset() isn't actually
+  // broken here, but pass the same object explicitly anyway to avoid
+  // relying on react-hook-form's implicitly-captured defaultValues.
+  const blankValues: DefaultValues<FormValues> = { role: 'ACCOUNTANT' }
+
   const {
     register,
     handleSubmit,
@@ -59,7 +67,7 @@ export function UserFormPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { role: 'ACCOUNTANT' },
+    defaultValues: blankValues,
   })
   const role = useWatch({ control, name: 'role' })
 
@@ -148,7 +156,7 @@ export function UserFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending,
         },
-        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
+        { label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' },
       ]}
     >
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">

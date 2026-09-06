@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { API_ORIGIN, getApiErrorMessage } from '../../api/client'
@@ -54,6 +54,13 @@ export function ContactFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `contact` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form.
+  const blankValues: DefaultValues<FormValues> = { contact_type: 'CUSTOMER', country: 'India' }
+
   const {
     register,
     handleSubmit,
@@ -74,7 +81,7 @@ export function ContactFormPage() {
           pincode: contact.pincode ?? '',
         }
       : undefined,
-    defaultValues: { contact_type: 'CUSTOMER', country: 'India' },
+    defaultValues: blankValues,
   })
 
   const createMutation = useMutation({
@@ -170,7 +177,7 @@ export function ContactFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending || updateMutation.isPending,
         },
-        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
+        { label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' },
       ]}
     >
       {issuedCredentials && (
@@ -183,7 +190,8 @@ export function ContactFormPage() {
             Temporary password: <code className="font-semibold">{issuedCredentials.temporary_password}</code>
           </p>
           <p className="mt-2 text-xs text-[var(--color-ink-2)]">
-            This password is shown only once and cannot be retrieved again.
+            This password is shown only once and cannot be retrieved again. The portal user
+            will be required to set their own password the moment they log in with it.
           </p>
           <button
             onClick={() => navigate(`/contacts`)}

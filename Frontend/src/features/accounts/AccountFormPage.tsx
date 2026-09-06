@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { getApiErrorMessage } from '../../api/client'
@@ -44,6 +44,13 @@ export function AccountFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `account` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form.
+  const blankValues: DefaultValues<FormValues> = { account_type: 'ASSET' }
+
   const {
     register,
     handleSubmit,
@@ -60,7 +67,7 @@ export function AccountFormPage() {
           is_payable: account.is_payable,
         }
       : undefined,
-    defaultValues: { account_type: 'ASSET' },
+    defaultValues: blankValues,
   })
 
   const createMutation = useMutation({
@@ -120,7 +127,7 @@ export function AccountFormPage() {
           variant: 'primary',
           disabled: createMutation.isPending || updateMutation.isPending,
         },
-        { label: 'Clear', onClick: () => reset(), variant: 'secondary' },
+        { label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' },
       ]}
     >
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">

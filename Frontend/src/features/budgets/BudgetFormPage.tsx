@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Controller, useFieldArray, useForm } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, type DefaultValues } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { analyticAccountOptions } from '../../api/endpoints/analyticAccounts'
@@ -59,6 +59,15 @@ export function BudgetFormPage() {
     enabled: !isNew,
   })
 
+  // Hoisted so the Clear button can pass this same object to reset()
+  // explicitly - react-hook-form's `values` option (below) silently
+  // overwrites its internal defaultValues with the loaded record once
+  // `budget` resolves, so a bare reset() on an edit page just reapplies
+  // the currently-loaded record instead of blanking the form. Passing
+  // this object explicitly also forces the `lines` useFieldArray to
+  // resync, which a bare reset() does not reliably do either.
+  const blankValues: DefaultValues<FormValues> = { lines: [{ ...emptyLine }] }
+
   const {
     register,
     handleSubmit,
@@ -80,7 +89,7 @@ export function BudgetFormPage() {
           })),
         }
       : undefined,
-    defaultValues: { lines: [{ ...emptyLine }] },
+    defaultValues: blankValues,
   })
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
 
@@ -147,7 +156,7 @@ export function BudgetFormPage() {
       variant: 'secondary' as const,
       disabled: saveMutation.isPending,
     })
-    actions.push({ label: 'Clear', onClick: () => reset(), variant: 'secondary' as const })
+    actions.push({ label: 'Clear', onClick: () => reset(blankValues), variant: 'secondary' as const })
   }
   if (!isNew && status === 'DRAFT') {
     actions.push({
