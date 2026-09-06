@@ -180,6 +180,7 @@ export function BudgetFormPage() {
     <FormShell
       title={isNew ? 'New Budget' : budget?.name ?? 'Budget'}
       status={status}
+      updatedAt={budget?.updated_at}
       onBack={goBack}
       actions={actions}
     >

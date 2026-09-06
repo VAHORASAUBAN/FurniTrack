@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowLeft } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { absoluteTime, relativeTime } from '../../lib/time'
 import { StatusPill } from './StatusPill'
 
 export interface FormAction {
@@ -26,12 +27,17 @@ const VARIANT_CLASSES: Record<NonNullable<FormAction['variant']>, string> = {
 export function FormShell({
   title,
   status,
+  updatedAt,
   actions = [],
   onBack,
   children,
 }: {
   title: string
   status?: string
+  /** When set, shows "Updated {relative time}" next to the status pill
+   * (title carries the precise timestamp) - so a transaction's own page
+   * answers "when did this happen", not just the shared notification feed. */
+  updatedAt?: string
   actions?: FormAction[]
   onBack: () => void
   children: ReactNode
@@ -59,6 +65,11 @@ export function FormShell({
           <span className="h-4 w-px bg-[var(--color-rule-2)]" />
           <h1 className="font-display text-[19px] font-semibold tracking-tight text-[var(--color-ink)]">{title}</h1>
           {status && <StatusPill status={status} />}
+          {updatedAt && (
+            <span className="text-xs text-[var(--color-ink-3)]" title={absoluteTime(updatedAt)}>
+              Updated {relativeTime(updatedAt)}
+            </span>
+          )}
         </div>
         {actions.length > 0 && (
           <div className="flex gap-2">

@@ -190,6 +190,7 @@ export function VendorBillFormPage() {
     <FormShell
       title={isNew ? 'New Vendor Bill' : bill?.doc_number ?? 'Vendor Bill'}
       status={bill?.balance?.payment_status === 'PAID' ? 'PAID' : status}
+      updatedAt={bill?.updated_at}
       onBack={goBack}
       actions={actions}
     >

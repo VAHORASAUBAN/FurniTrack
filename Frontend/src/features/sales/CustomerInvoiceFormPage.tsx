@@ -191,6 +191,7 @@ export function CustomerInvoiceFormPage() {
     <FormShell
       title={isNew ? 'New Customer Invoice' : invoice?.doc_number ?? 'Customer Invoice'}
       status={invoice?.balance?.payment_status === 'PAID' ? 'PAID' : status}
+      updatedAt={invoice?.updated_at}
       onBack={goBack}
       actions={actions}
     >

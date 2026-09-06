@@ -3,7 +3,7 @@ remaining are never stored — `budget_service.attach_achieved` stamps them
 onto each line's response the same way `document_service.attach_balance`
 stamps `balance` onto a Document, so they're always freshly computed.
 """
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,4 +57,5 @@ class BudgetOut(BaseModel):
     status: BudgetStatus
     revises_budget_id: int | None
     is_active: bool
+    updated_at: datetime
     lines: list[BudgetLineOut]

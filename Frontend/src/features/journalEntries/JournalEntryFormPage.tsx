@@ -224,6 +224,7 @@ export function JournalEntryFormPage() {
     <FormShell
       title={isNew ? 'New Journal Entry' : entry?.entry_number ?? 'Journal Entry'}
       status={status}
+      updatedAt={entry?.updated_at}
       onBack={goBack}
       actions={actions}
     >

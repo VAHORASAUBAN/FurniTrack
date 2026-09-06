@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDownCircle, ArrowUpCircle, Inbox, RotateCcw, ShoppingCart, SlidersHorizontal, Target } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { listBudgets } from '../../api/endpoints/budgets'
 import { getDashboardSummary } from '../../api/endpoints/dashboard'
@@ -8,8 +9,10 @@ import { listCustomerInvoices, listSalesOrders } from '../../api/endpoints/sales
 import { listPurchaseOrders, listVendorBills } from '../../api/endpoints/purchase'
 import { DashboardDetailModal, type DetailColumn } from '../../components/shared/DashboardDetailModal'
 import { StatusPill } from '../../components/shared/StatusPill'
+import { useFloatingMenu } from '../../hooks/useFloatingMenu'
 import { documentPath, DOC_TYPE_LABEL } from '../../lib/documentRoutes'
 import { formatMoney } from '../../lib/money'
+import { relativeTime } from '../../lib/time'
 import { useDashboardPrefsStore, WIDGET_LABELS, type DashboardWidget } from '../../stores/dashboardPrefsStore'
 import type { Budget } from '../../types/budget'
 import type { Document } from '../../types/document'
@@ -104,22 +107,14 @@ const SECTION_WIDGETS: DashboardWidget[] = ['customer_invoices_breakdown', 'vend
 
 function CustomizeMenu() {
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const { triggerRef, menuRef, menuPosition } = useFloatingMenu({ open, onClose: () => setOpen(false), align: 'right' })
   const hidden = useDashboardPrefsStore((s) => s.hidden)
   const toggle = useDashboardPrefsStore((s) => s.toggle)
   const resetToDefault = useDashboardPrefsStore((s) => s.resetToDefault)
   const isVisible = (w: DashboardWidget) => !hidden.includes(w)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   return (
-    <div ref={containerRef} className="relative print:hidden">
+    <div ref={triggerRef} className="relative print:hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -128,45 +123,52 @@ function CustomizeMenu() {
         <SlidersHorizontal size={14} /> Customize
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] p-3 shadow-lg">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">KPI Cards</p>
-          <div className="flex flex-col gap-1.5">
-            {KPI_WIDGETS.map((w) => (
-              <label key={w} className="flex items-center gap-2 text-sm text-[var(--color-ink)] select-none">
-                <input
-                  type="checkbox"
-                  checked={isVisible(w)}
-                  onChange={() => toggle(w)}
-                  className="accent-[var(--color-accent)]"
-                />
-                {WIDGET_LABELS[w]}
-              </label>
-            ))}
-          </div>
-          <p className="mb-2 mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">Sections</p>
-          <div className="flex flex-col gap-1.5">
-            {SECTION_WIDGETS.map((w) => (
-              <label key={w} className="flex items-center gap-2 text-sm text-[var(--color-ink)] select-none">
-                <input
-                  type="checkbox"
-                  checked={isVisible(w)}
-                  onChange={() => toggle(w)}
-                  className="accent-[var(--color-accent)]"
-                />
-                {WIDGET_LABELS[w]}
-              </label>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={resetToDefault}
-            className="mt-3 inline-flex items-center gap-1.5 border-t border-[var(--color-rule)] pt-2 text-sm text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+      {open &&
+        menuPosition &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right }}
+            className="z-[60] w-64 rounded-md border border-[var(--color-rule-2)] bg-[var(--color-surface)] p-3 shadow-lg"
           >
-            <RotateCcw size={13} /> Reset to default
-          </button>
-        </div>
-      )}
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">KPI Cards</p>
+            <div className="flex flex-col gap-1.5">
+              {KPI_WIDGETS.map((w) => (
+                <label key={w} className="flex items-center gap-2 text-sm text-[var(--color-ink)] select-none">
+                  <input
+                    type="checkbox"
+                    checked={isVisible(w)}
+                    onChange={() => toggle(w)}
+                    className="accent-[var(--color-accent)]"
+                  />
+                  {WIDGET_LABELS[w]}
+                </label>
+              ))}
+            </div>
+            <p className="mb-2 mt-3 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">Sections</p>
+            <div className="flex flex-col gap-1.5">
+              {SECTION_WIDGETS.map((w) => (
+                <label key={w} className="flex items-center gap-2 text-sm text-[var(--color-ink)] select-none">
+                  <input
+                    type="checkbox"
+                    checked={isVisible(w)}
+                    onChange={() => toggle(w)}
+                    className="accent-[var(--color-accent)]"
+                  />
+                  {WIDGET_LABELS[w]}
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={resetToDefault}
+              className="mt-3 inline-flex items-center gap-1.5 border-t border-[var(--color-rule)] pt-2 text-sm text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+            >
+              <RotateCcw size={13} /> Reset to default
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
@@ -313,6 +315,9 @@ export function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-sm text-[var(--color-ink)]">{formatMoney(doc.total_amount)}</span>
                     <StatusPill status={doc.status} />
+                    <span className="w-16 shrink-0 text-right text-xs text-[var(--color-ink-3)]">
+                      {relativeTime(doc.updated_at)}
+                    </span>
                   </div>
                 </div>
               ))}

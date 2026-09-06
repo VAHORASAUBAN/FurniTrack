@@ -179,6 +179,7 @@ export function PurchaseOrderFormPage() {
     <FormShell
       title={isNew ? 'New Purchase Order' : order?.doc_number ?? 'Purchase Order'}
       status={status}
+      updatedAt={order?.updated_at}
       onBack={goBack}
       actions={actions}
     >

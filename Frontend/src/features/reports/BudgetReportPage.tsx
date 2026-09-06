@@ -1,9 +1,45 @@
 import { useQuery } from '@tanstack/react-query'
+import {
+  BarChart3 as BarIcon,
+  ChartArea as AreaIcon,
+  LineChart as LineIcon,
+  PieChart as PieIcon,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { getBudget, listBudgets } from '../../api/endpoints/budgets'
 import { BudgetDrillDownModal } from '../budgets/BudgetDrillDownModal'
 import { formatMoney } from '../../lib/money'
+
+type ChartKind = 'bar' | 'line' | 'area' | 'pie'
+
+const CHART_KINDS: { key: ChartKind; label: string; icon: typeof BarIcon }[] = [
+  { key: 'bar', label: 'Bar', icon: BarIcon },
+  { key: 'line', label: 'Line', icon: LineIcon },
+  { key: 'area', label: 'Area', icon: AreaIcon },
+  { key: 'pie', label: 'Pie (Achieved)', icon: PieIcon },
+]
+
+// A fixed qualitative palette for the Pie view's per-line slices, distinct
+// from the app's semantic accent/warning/danger tokens - a pie can have
+// more slices than this app's theme defines named colors for.
+const PIE_COLORS = ['#285e48', '#a9762f', '#5c8a8a', '#a35c3a', '#6b5c94', '#8a9c3a', '#3a7a9c', '#9c5c7a']
 
 /** Report > Budget Report — a read-only view across a budget's lines
  * (Planned vs Achieved, a chart, and the same traceability drill-down as
@@ -13,6 +49,7 @@ import { formatMoney } from '../../lib/money'
 export function BudgetReportPage() {
   const [budgetId, setBudgetId] = useState<number | null>(null)
   const [drillDownLineIndex, setDrillDownLineIndex] = useState<number | null>(null)
+  const [chartKind, setChartKind] = useState<ChartKind>('bar')
 
   const { data: budgetsPage, isLoading: isLoadingList } = useQuery({
     queryKey: ['budgets', 'report-picker'],
@@ -100,23 +137,98 @@ export function BudgetReportPage() {
           </div>
 
           <div className="rounded-lg border border-[var(--color-rule)] bg-[var(--color-surface)] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-3)]">
+                Planned vs Achieved
+              </span>
+              <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--color-rule-2)] bg-[var(--color-paper-2)] p-0.5">
+                {CHART_KINDS.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setChartKind(key)}
+                    title={`${label} chart`}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+                      chartKind === key
+                        ? 'bg-[var(--color-surface)] text-[var(--color-accent)] shadow-[var(--shadow-sm)]'
+                        : 'text-[var(--color-ink-3)] hover:text-[var(--color-ink)]'
+                    }`}
+                  >
+                    <Icon size={14} />
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ width: '100%', height: 260 }}>
+              {chartKind === 'pie' && totalAchieved === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-[var(--color-ink-3)]">
+                  No achieved amounts yet to chart.
+                </div>
+              ) : (
               <ResponsiveContainer>
-                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-rule)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
-                  <YAxis tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'var(--color-surface)', border: '1px solid var(--color-rule)', fontSize: 12.5,
-                    }}
-                    formatter={(value: number) => formatMoney(value.toFixed(2))}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12.5 }} />
-                  <Bar dataKey="Planned" fill="var(--color-rule-2)" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Achieved" fill="var(--color-accent)" radius={[3, 3, 0, 0]} />
-                </BarChart>
+                {chartKind === 'bar' ? (
+                  <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-rule)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <YAxis tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--color-surface)', border: '1px solid var(--color-rule)', fontSize: 12.5,
+                      }}
+                      formatter={(value: number) => formatMoney(value.toFixed(2))}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                    <Bar dataKey="Planned" fill="var(--color-rule-2)" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="Achieved" fill="var(--color-accent)" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                ) : chartKind === 'line' ? (
+                  <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-rule)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <YAxis tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--color-surface)', border: '1px solid var(--color-rule)', fontSize: 12.5,
+                      }}
+                      formatter={(value: number) => formatMoney(value.toFixed(2))}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                    <Line type="monotone" dataKey="Planned" stroke="var(--color-rule-2)" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Achieved" stroke="var(--color-accent)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                ) : chartKind === 'area' ? (
+                  <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-rule)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <YAxis tick={{ fontSize: 12, fill: 'var(--color-ink-3)' }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--color-surface)', border: '1px solid var(--color-rule)', fontSize: 12.5,
+                      }}
+                      formatter={(value: number) => formatMoney(value.toFixed(2))}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                    <Area type="monotone" dataKey="Planned" stroke="var(--color-rule-2)" fill="var(--color-rule-2)" fillOpacity={0.35} />
+                    <Area type="monotone" dataKey="Achieved" stroke="var(--color-accent)" fill="var(--color-accent)" fillOpacity={0.35} />
+                  </AreaChart>
+                ) : (
+                  <PieChart>
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--color-surface)', border: '1px solid var(--color-rule)', fontSize: 12.5,
+                      }}
+                      formatter={(value: number) => formatMoney(value.toFixed(2))}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                    <Pie data={chartData} dataKey="Achieved" nameKey="name" outerRadius={90} label={(entry) => entry.name}>
+                      {chartData.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                )}
               </ResponsiveContainer>
+              )}
             </div>
           </div>
 

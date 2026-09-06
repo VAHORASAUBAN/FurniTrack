@@ -31,7 +31,7 @@ _POSTED_DOC_SUMMARY_SQL = """
 """
 
 _RECENT_DOCUMENTS_SQL = """
-    SELECT d.id, d.doc_type, d.doc_number, d.doc_date, d.status, d.total_amount, c.name AS partner_name
+    SELECT d.id, d.doc_type, d.doc_number, d.doc_date, d.status, d.total_amount, d.updated_at, c.name AS partner_name
     FROM document d
     JOIN contact c ON c.id = d.partner_id
     ORDER BY d.created_at DESC, d.id DESC

@@ -77,4 +77,5 @@ class JournalEntryOut(BaseModel):
     total_credit: Money
     posted_at: datetime | None
     posted_by: int | None
+    updated_at: datetime
     lines: list[JournalEntryLineOut]

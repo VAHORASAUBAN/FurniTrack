@@ -55,7 +55,13 @@ export function PaymentDetailPage({ backPath }: PaymentDetailPageProps) {
   }
 
   return (
-    <FormShell title={payment.payment_number} status={payment.status} onBack={goBack} actions={actions}>
+    <FormShell
+      title={payment.payment_number}
+      status={payment.status}
+      updatedAt={payment.created_at}
+      onBack={goBack}
+      actions={actions}
+    >
       <div className="grid grid-cols-4 gap-x-6 gap-y-4">
         <div>
           <div className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--color-ink-3)]">Partner</div>

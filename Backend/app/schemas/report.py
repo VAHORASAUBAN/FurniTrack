@@ -1,5 +1,5 @@
 """Balance Sheet / P&L response shapes — design doc §4.1, §4.2."""
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -75,6 +75,7 @@ class RecentDocumentOut(BaseModel):
     status: str
     partner_name: str
     total_amount: Money
+    updated_at: datetime
 
 
 class DashboardSummaryOut(BaseModel):

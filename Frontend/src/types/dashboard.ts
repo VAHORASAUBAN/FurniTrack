@@ -29,6 +29,7 @@ export interface RecentDocument {
   status: string
   partner_name: string
   total_amount: string
+  updated_at: string
 }
 
 export interface DashboardSummary {

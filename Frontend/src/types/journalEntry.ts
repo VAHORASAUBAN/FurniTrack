@@ -27,6 +27,7 @@ export interface JournalEntry {
   total_credit: string
   posted_at: string | null
   posted_by: number | null
+  updated_at: string
   lines: JournalEntryLine[]
 }
 

@@ -21,6 +21,7 @@ export interface Budget {
   status: BudgetStatus
   revises_budget_id: number | null
   is_active: boolean
+  updated_at: string
   lines: BudgetLine[]
 }
 
