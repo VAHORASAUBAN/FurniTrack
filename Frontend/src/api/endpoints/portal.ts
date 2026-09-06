@@ -23,3 +23,15 @@ export async function payMyInvoice(id: number, input: PortalPayInput): Promise<P
   const resp = await apiClient.post<Payment>(`/portal/invoices/${id}/pay`, input)
   return resp.data
 }
+
+// A vendor's side of the portal — read-only, no pay endpoint (a vendor
+// doesn't settle their own bill; the staff side does that).
+export async function listMyBills(params: ListParams): Promise<Page<Document>> {
+  const resp = await apiClient.get<Page<Document>>('/portal/bills', { params })
+  return resp.data
+}
+
+export async function getMyBill(id: number): Promise<Document> {
+  const resp = await apiClient.get<Document>(`/portal/bills/${id}`)
+  return resp.data
+}

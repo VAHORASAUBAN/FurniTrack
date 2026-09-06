@@ -15,6 +15,8 @@ import { BudgetListPage } from './features/budgets/BudgetListPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { PaymentDetailPage } from './features/payments/PaymentDetailPage'
 import { PaymentListPage } from './features/payments/PaymentListPage'
+import { PortalBillDetailPage } from './features/portal/PortalBillDetailPage'
+import { PortalBillListPage } from './features/portal/PortalBillListPage'
 import { PortalInvoiceDetailPage } from './features/portal/PortalInvoiceDetailPage'
 import { PortalInvoiceListPage } from './features/portal/PortalInvoiceListPage'
 import { ContactFormPage } from './features/contacts/ContactFormPage'
@@ -124,6 +126,8 @@ function App() {
             <Route path="/portal" element={<Navigate to="/portal/invoices" replace />} />
             <Route path="/portal/invoices" element={<PortalInvoiceListPage />} />
             <Route path="/portal/invoices/:id" element={<PortalInvoiceDetailPage />} />
+            <Route path="/portal/bills" element={<PortalBillListPage />} />
+            <Route path="/portal/bills/:id" element={<PortalBillDetailPage />} />
           </Route>
         </Route>
 

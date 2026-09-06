@@ -56,3 +56,33 @@ def get_my_invoice_pdf(invoice_id: int, db: DbSession, user: CurrentUser):
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
     )
+
+
+# A vendor's side of the portal — read-only (no /pay: a vendor doesn't
+# settle their own bill, the staff side does via Purchase > Payments).
+@router.get("/bills", response_model=Page[DocumentOut])
+def list_my_bills(db: DbSession, user: CurrentUser, params: PageParams = Depends(page_params)):
+    items, total = portal_service.list_own_bills(db, user, params)
+    for item in items:
+        document_service.attach_balance(db, item)
+    return Page(items=items, page=params.page, page_size=params.page_size,
+                total=total, total_pages=total_pages(total, params.page_size))
+
+
+@router.get("/bills/{bill_id}", response_model=DocumentOut)
+def get_my_bill(bill_id: int, db: DbSession, user: CurrentUser):
+    document = portal_service.get_own_bill(db, user, bill_id)
+    return document_service.attach_balance(db, document)
+
+
+@router.get("/bills/{bill_id}/pdf")
+def get_my_bill_pdf(bill_id: int, db: DbSession, user: CurrentUser):
+    document = portal_service.get_own_bill(db, user, bill_id)
+    document_service.attach_balance(db, document)
+    company_name = get_company_settings(db).company_name
+    pdf_bytes = pdf_service.build_document_pdf(document, company_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{document.doc_number.replace("/", "-")}.pdf"'},
+    )

@@ -1,5 +1,5 @@
 import { KeyRound, LogOut } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { logout as logoutApi } from '../../api/endpoints/auth'
 import { useAuthStore } from '../../stores/authStore'
 import { NotificationBell } from '../shared/NotificationBell'
@@ -34,8 +34,18 @@ export function Topbar() {
 
   return (
     <header className="print:hidden flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-rule)] bg-[var(--color-surface)]/80 px-7 backdrop-blur-sm">
-      <div className="text-[13px] text-[var(--color-ink-3)]">
-        {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+      <div className="flex items-center gap-5">
+        <div className="text-[13px] text-[var(--color-ink-3)]">
+          {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        </div>
+        {/* Portal users get no Sidebar at all (see Sidebar.tsx) - this is
+            the only nav they have between the invoice and bill screens. */}
+        {user?.role === 'PORTAL' && (
+          <nav className="flex items-center gap-1.5">
+            <PortalNavLink to="/portal/invoices">My Invoices</PortalNavLink>
+            <PortalNavLink to="/portal/bills">My Bills</PortalNavLink>
+          </nav>
+        )}
       </div>
       <div className="flex items-center gap-4">
         {user?.role !== 'PORTAL' && <NotificationBell />}
@@ -73,5 +83,22 @@ export function Topbar() {
         </button>
       </div>
     </header>
+  )
+}
+
+function PortalNavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
+          isActive
+            ? 'bg-[var(--color-accent-bg)] text-[var(--color-accent)]'
+            : 'text-[var(--color-ink-2)] hover:bg-[var(--color-paper-2)] hover:text-[var(--color-ink)]'
+        }`
+      }
+    >
+      {children}
+    </NavLink>
   )
 }

@@ -42,6 +42,28 @@ def get_own_invoice(db: Session, user: User, invoice_id: int) -> Document:
     return document
 
 
+def list_own_bills(db: Session, user: User, params: PageParams) -> tuple[list[Document], int]:
+    """A vendor's side of the portal (design doc §5.9's "invoices/bills") —
+    read-only: a vendor sees what they're owed, they don't pay themselves."""
+    query = scoped_documents(db, user).filter(Document.doc_type == DocType.VENDOR_BILL)
+    if params.search:
+        like = f"%{params.search}%"
+        query = query.filter(or_(*(getattr(Document, f).ilike(like) for f in SEARCH_FIELDS)))
+    query = apply_sort(query, params.sort, Document, SORT_FIELDS | {"doc_date", "updated_at"}, "-updated_at")
+    return paginate(query, params)
+
+
+def get_own_bill(db: Session, user: User, bill_id: int) -> Document:
+    document = (
+        scoped_documents(db, user)
+        .filter(Document.id == bill_id, Document.doc_type == DocType.VENDOR_BILL)
+        .one_or_none()
+    )
+    if document is None:
+        raise NotFoundError("Bill not found.", code="NOT_FOUND")
+    return document
+
+
 def pay_own_invoice(
     db: Session, user: User, invoice_id: int, *, method: PaymentMethod, amount: Decimal, payment_date: date
 ) -> Payment:
